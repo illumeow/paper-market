@@ -1,0 +1,18 @@
+{$DOMAIN} {
+    encode gzip
+
+    @sse path /api/stream
+    handle @sse {
+        reverse_proxy app:8000 {
+            flush_interval -1
+        }
+    }
+    handle /api/* {
+        reverse_proxy app:8000
+    }
+    handle {
+        root * /srv/frontend
+        try_files {path} {path}.html /dashboard.html
+        file_server
+    }
+}

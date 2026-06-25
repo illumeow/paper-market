@@ -7,7 +7,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     volumes:
       - ./data:/data
-      - ./config:/config:ro
+      - ./config:/srv/config:ro
     expose:
       - "8000"
     restart: unless-stopped

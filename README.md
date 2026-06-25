@@ -1,3 +1,7 @@
+# paper-market
+
+Fake-money banking + stock-trading simulation for a camp casino event (FastAPI + SQLite, Caddy auto-HTTPS).
+
 ## Local dev
 pip install -e ".[dev]"
 uvicorn app.main:app --reload

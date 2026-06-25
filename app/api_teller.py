@@ -123,9 +123,8 @@ async def t_trade(request: Request, _: bool = Depends(require_staff)):
 @router.post("/api/teller/news")
 async def t_news(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
+    # insert only; the ticker broadcasts it once via the last_news_id cursor (<=tick_seconds later)
     repo.add_news(request.app.state.conn, b["text"], "manual", time.time())
-    await request.app.state.broadcaster.publish({"type": "news",
-        "data": {"text": b["text"], "source": "manual"}})
     return {"ok": True}
 
 

@@ -35,6 +35,8 @@ def create_app():
     app.state.repo = repo
     app.state.broadcaster = Broadcaster()
     app.state.rate_limiter = RateLimiter(max_per_min=5)
+    # ticker broadcasts news rows newer than this cursor (so pre-existing rows aren't re-blasted)
+    app.state.last_news_id = repo.latest_news_id(conn)
     app.include_router(member_router)
     app.include_router(teller_router)
     app.include_router(public_router)

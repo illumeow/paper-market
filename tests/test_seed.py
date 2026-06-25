@@ -29,3 +29,23 @@ def test_add_news_round_trips_columns():
     assert row["text"] == "Big news"
     assert row["source"] == "event"
     assert row["ts"] == 1234.5
+
+
+def test_news_after_cursor_delivers_each_row_once():
+    # models the ticker's last_news_id cursor: each row is seen exactly once, in order
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    assert repo.latest_news_id(conn) == 0          # empty -> cursor starts at 0
+    assert repo.news_after(conn, 0) == []
+
+    repo.add_news(conn, "first", "event", 1.0)
+    fresh = repo.news_after(conn, 0)
+    assert [r["text"] for r in fresh] == ["first"]
+    cursor = fresh[-1]["id"]
+
+    # nothing new -> the same news is NOT re-delivered (the reported banner bug)
+    assert repo.news_after(conn, cursor) == []
+
+    repo.add_news(conn, "second", "manual", 2.0)
+    fresh2 = repo.news_after(conn, cursor)
+    assert [r["text"] for r in fresh2] == ["second"]
+    assert repo.latest_news_id(conn) == fresh2[-1]["id"]

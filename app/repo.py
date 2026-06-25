@@ -119,6 +119,15 @@ def current_news(conn, limit=10):
     return conn.execute("SELECT text,ts,source FROM news ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
 
 
+def latest_news_id(conn):
+    return conn.execute("SELECT COALESCE(MAX(id), 0) m FROM news").fetchone()["m"]
+
+
+def news_after(conn, after_id):
+    return conn.execute("SELECT id,text,ts,source FROM news WHERE id>? ORDER BY id ASC",
+                        (after_id,)).fetchall()
+
+
 def due_events(conn, elapsed):
     return conn.execute("SELECT * FROM events WHERE fired=0 AND at_min<=?", (elapsed,)).fetchall()
 

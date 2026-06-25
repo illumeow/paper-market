@@ -1,3 +1,4 @@
+import time
 import pytest
 from starlette.testclient import TestClient
 
@@ -70,3 +71,13 @@ def test_start_sets_clock_and_is_idempotent(client):
 def test_start_requires_staff(client):
     # No auth: 403
     assert client.post("/api/teller/start").status_code == 403
+
+
+def test_teller_trade_blocked_before_start(client):
+    from app.clock import set_event_start
+    _staff(client)
+    r = client.post("/api/teller/trade", json={"id": "0-1", "stock_id": "TECH", "side": "buy", "shares": 1})
+    assert r.status_code == 409
+    set_event_start(client.app.state.conn, time.time())
+    r2 = client.post("/api/teller/trade", json={"id": "0-1", "stock_id": "TECH", "side": "buy", "shares": 1})
+    assert r2.status_code == 200

@@ -121,6 +121,8 @@ async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
 
 @router.post("/api/teller/trade")
 async def t_trade(request: Request, _: bool = Depends(require_staff)):
+    if event_start(request.app.state.conn) is None:
+        raise HTTPException(409, "event not started")
     b = await request.json(); cfg = request.app.state.config
     async with MUTATION_LOCK:
         res = services.execute_trade(request.app.state.conn, b["id"], b["stock_id"], b["side"],

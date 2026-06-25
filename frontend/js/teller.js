@@ -44,6 +44,7 @@ loginBtn.addEventListener("click", async () => {
     await api("/api/login/staff", "POST", { password: staffPw.value });
     loginSection.classList.add("hidden");
     appSection.classList.remove("hidden");
+    loadEventStatus();
   } catch (err) {
     toast(err.message, "err");
   } finally {
@@ -271,12 +272,6 @@ startEventBtn.addEventListener("click", async () => {
     toast(err.message, "err");
     startEventBtn.disabled = false;
   }
-});
-
-// Load event status whenever the app section becomes visible (after login)
-loginBtn.addEventListener("click", async () => {
-  // Wait a tick so the login completes first (the existing handler runs first)
-  setTimeout(loadEventStatus, 300);
 });
 
 // ── Check if already logged in ────────────────────────────

@@ -2,6 +2,46 @@ import hashlib
 import app.db as db
 from app.config import load_config
 from app import repo
+from app.clock import event_start
+
+
+def test_provision_seeds_without_clock(tmp_path):
+    """provision should seed members/stocks/events but NOT set the clock."""
+    pins = tmp_path / "pins.csv"
+    pins.write_text("member_id,pin\n" + "".join(f"{g}-{i},{1000+g*12+i}\n"
+                    for g in range(10) for i in range(1, 13)))
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config()
+    repo.provision(conn, cfg, pins_path=str(pins), now=1000.0)
+    assert conn.execute("SELECT COUNT(*) c FROM members").fetchone()["c"] == 120
+    assert conn.execute("SELECT COUNT(*) c FROM stocks").fetchone()["c"] == 5
+    assert conn.execute("SELECT COUNT(*) c FROM events").fetchone()["c"] >= 1
+    # Clock should NOT be set by provision
+    assert event_start(conn) is None
+
+
+def test_provision_idempotent(tmp_path):
+    """provision should be idempotent: calling twice leaves counts unchanged."""
+    pins = tmp_path / "pins.csv"
+    pins.write_text("member_id,pin\n" + "".join(f"{g}-{i},{1000+g*12+i}\n"
+                    for g in range(10) for i in range(1, 13)))
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config()
+    repo.provision(conn, cfg, pins_path=str(pins), now=1000.0)
+    repo.provision(conn, cfg, pins_path=str(pins), now=2000.0)
+    assert conn.execute("SELECT COUNT(*) c FROM members").fetchone()["c"] == 120
+    assert conn.execute("SELECT COUNT(*) c FROM stocks").fetchone()["c"] == 5
+
+
+def test_seed_still_sets_clock(tmp_path):
+    """seed should still set the clock when it is None."""
+    pins = tmp_path / "pins.csv"
+    pins.write_text("member_id,pin\n" + "".join(f"{g}-{i},{1000+g*12+i}\n"
+                    for g in range(10) for i in range(1, 13)))
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config()
+    repo.seed(conn, cfg, pins_path=str(pins), now=1234.0)
+    assert event_start(conn) == 1234.0
 
 
 def test_seed_members_stocks_idempotent(tmp_path):
@@ -18,7 +58,6 @@ def test_seed_members_stocks_idempotent(tmp_path):
     expected = hashlib.sha256(b"1001").hexdigest()
     assert repo.get_member_by_pinhash(conn, expected)["member_id"] == "0-1"
     # event start fixed on first seed
-    from app.clock import event_start
     assert event_start(conn) == 1000.0
 
 

@@ -8,7 +8,8 @@ def _h(pin: str) -> str:
     return hashlib.sha256(pin.encode()).hexdigest()
 
 
-def seed(conn, config, pins_path="config/pins.csv", now=None):
+def provision(conn, config, pins_path="config/pins.csv", now=None):
+    """Provision the database with members, stocks, and events (idempotent, no clock)."""
     now = now if now is not None else time.time()
     if conn.execute("SELECT COUNT(*) c FROM members").fetchone()["c"] == 0:
         with open(pins_path, newline="", encoding="utf-8") as f:
@@ -30,6 +31,13 @@ def seed(conn, config, pins_path="config/pins.csv", now=None):
             conn.execute("INSERT INTO events(at_min,stock_id,pct,duration_min,headline) "
                          "VALUES(?,?,?,?,?)",
                          (e["at_min"], e["stock_id"], e["pct"], e["duration_min"], e.get("headline")))
+    conn.commit()
+
+
+def seed(conn, config, pins_path="config/pins.csv", now=None):
+    """Provision the database and set the event clock if not already set."""
+    now = now if now is not None else time.time()
+    provision(conn, config, pins_path, now)
     if event_start(conn) is None:
         set_event_start(conn, now)
     conn.commit()

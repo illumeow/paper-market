@@ -1,9 +1,11 @@
 import os
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.config import load_config
+from app.errors import BusinessError
 from app import db, repo
 from app.realtime import Broadcaster
 from app.auth import RateLimiter
@@ -29,6 +31,13 @@ def create_app():
             app.state.ticker.cancel()
 
     app = FastAPI(title="paper-market", lifespan=lifespan)
+
+    @app.exception_handler(BusinessError)
+    async def _business_error(request: Request, exc: BusinessError):
+        # Expected user-facing rejection → 400 with the message (frontends toast .detail).
+        # A bare ValueError or anything else stays an unhandled 500 (a true server fault).
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
     cfg = load_config()
     db_path = os.environ.get("DB_PATH", "data/paper.db")
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)

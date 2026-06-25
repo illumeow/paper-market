@@ -73,6 +73,14 @@ def test_start_requires_staff(client):
     assert client.post("/api/teller/start").status_code == 403
 
 
+def test_business_error_returns_400_with_message(client):
+    # A domain rejection surfaces as 400 + detail (frontend toasts it), not a 500.
+    _staff(client)
+    r = client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 999999})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "insufficient balance"
+
+
 def test_teller_trade_blocked_before_start(client):
     from app.clock import set_event_start
     _staff(client)

@@ -1,0 +1,22 @@
+import hashlib
+import app.db as db
+from app.config import load_config
+from app import repo
+
+
+def test_seed_members_stocks_idempotent(tmp_path):
+    pins = tmp_path / "pins.csv"
+    pins.write_text("member_id,pin\n" + "".join(f"{g}-{i},{1000+g*12+i}\n"
+                    for g in range(10) for i in range(1, 13)))
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config()
+    repo.seed(conn, cfg, pins_path=str(pins), now=1000.0)
+    repo.seed(conn, cfg, pins_path=str(pins), now=2000.0)  # idempotent
+    assert conn.execute("SELECT COUNT(*) c FROM members").fetchone()["c"] == 120
+    assert conn.execute("SELECT COUNT(*) c FROM stocks").fetchone()["c"] == 5
+    # Round-trip assertion: member 0-1 has PIN "1001", verify it hashed and reverse lookup works
+    expected = hashlib.sha256(b"1001").hexdigest()
+    assert repo.get_member_by_pinhash(conn, expected)["member_id"] == "0-1"
+    # event start fixed on first seed
+    from app.clock import event_start
+    assert event_start(conn) == 1000.0

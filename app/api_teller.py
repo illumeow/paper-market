@@ -6,8 +6,6 @@ from app.auth import make_token, require_staff, COOKIE
 from app.domain.cooldown import visit_status
 from app.domain.networth import member_amount
 from app.domain.export_csv import build_csv
-from app.domain.interest import loan_owed
-from app.clock import elapsed_min
 from app.locks import MUTATION_LOCK
 
 router = APIRouter()

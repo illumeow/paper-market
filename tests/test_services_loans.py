@@ -1,0 +1,35 @@
+import pytest, app.db as db
+from app import repo, services
+
+
+def _m(bal=1000, debt=0, loan_at=None):
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    conn.execute("INSERT INTO members(member_id,pin,balance,balance_accrued_at,debt,loan_taken_at) "
+                 "VALUES('0-1','h',?,0.0,?,?)", (bal, debt, loan_at))
+    conn.commit(); return conn
+
+
+def test_disburse_sets_debt_and_balance():
+    conn = _m()
+    services.loan_disburse(conn, "0-1", 5000, now=0.0, actor="teller", loan_cap=5000)
+    m = repo.get_member(conn, "0-1")
+    assert m["debt"] == 5000 and m["balance"] == 6000 and m["loan_taken_at"] == 0.0
+
+
+def test_disburse_over_cap_blocked():
+    conn = _m()
+    with pytest.raises(ValueError):
+        services.loan_disburse(conn, "0-1", 6000, now=0.0, actor="teller", loan_cap=5000)
+
+
+def test_second_loan_blocked_until_repaid():
+    conn = _m(debt=100, loan_at=0.0)
+    with pytest.raises(ValueError):
+        services.loan_disburse(conn, "0-1", 100, now=0.0, actor="teller", loan_cap=5000)
+
+
+def test_repay_reduces_debt_and_balance():
+    conn = _m(bal=10000, debt=1000, loan_at=0.0)
+    services.loan_repay(conn, "0-1", 500, now=0.0, actor="teller")  # owed≈1000 at t=0
+    m = repo.get_member(conn, "0-1")
+    assert m["debt"] == 500 and m["balance"] == 9500

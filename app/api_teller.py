@@ -1,0 +1,153 @@
+import time
+from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi.responses import JSONResponse, Response
+from app import repo, services
+from app.auth import make_token, require_staff, COOKIE
+from app.domain.cooldown import visit_status
+from app.domain.networth import member_amount
+from app.domain.export_csv import build_csv
+from app.domain.interest import loan_owed
+from app.clock import elapsed_min
+from app.locks import MUTATION_LOCK
+
+router = APIRouter()
+
+
+@router.post("/api/login/staff")
+async def login_staff(request: Request):
+    body = await request.json()
+    if str(body.get("password", "")) != request.app.state.config.staff_password:
+        raise HTTPException(403, "wrong password")
+    tok = make_token(request.app.state.config.secret_key, "staff")
+    resp = JSONResponse({"ok": True})
+    resp.set_cookie(COOKIE, tok, httponly=True, samesite="lax")
+    return resp
+
+
+@router.get("/api/member/{mid}")
+async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
+    conn = request.app.state.conn
+    m = repo.get_member(conn, mid)
+    if not m:
+        raise HTTPException(404, "no such member")
+    now = time.time()
+    locked, remaining = visit_status(m["last_teller_visit_at"], now,
+                                     request.app.state.config.economy["cooldown_min"])
+    if locked:
+        return {"member_id": mid, "locked": True, "cooldown_remaining_sec": int(remaining)}
+    async with MUTATION_LOCK:
+        repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
+        bal = services.accrue_balance(conn, mid, now)
+    return {"member_id": mid, "locked": False, "balance": bal, "debt": m["debt"],
+            "relief_claimed": bool(m["relief_claimed"]),
+            "fixed_deposits": [dict(f) for f in repo.open_fds(conn, mid)],
+            "holdings": [dict(h) for h in repo.list_holdings(conn, mid)]}
+
+
+def _eco(request):
+    return request.app.state.config.economy
+
+
+@router.post("/api/teller/deposit")
+async def t_deposit(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json()
+    async with MUTATION_LOCK:
+        services.deposit(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
+    return {"ok": True}
+
+
+@router.post("/api/teller/withdraw")
+async def t_withdraw(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json()
+    async with MUTATION_LOCK:
+        services.withdraw(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
+    return {"ok": True}
+
+
+@router.post("/api/teller/loan")
+async def t_loan(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json()
+    async with MUTATION_LOCK:
+        services.loan_disburse(request.app.state.conn, b["id"], int(b["amount"]), time.time(),
+                               "teller", _eco(request)["loan_cap"])
+    return {"ok": True}
+
+
+@router.post("/api/teller/repay")
+async def t_repay(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json()
+    async with MUTATION_LOCK:
+        services.loan_repay(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
+    return {"ok": True}
+
+
+@router.post("/api/teller/relief")
+async def t_relief(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json()
+    async with MUTATION_LOCK:
+        services.claim_relief(request.app.state.conn, b["id"], time.time(), "teller",
+                              _eco(request)["relief_amount"])
+    return {"ok": True}
+
+
+@router.post("/api/teller/fd/open")
+async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json(); eco = _eco(request)
+    async with MUTATION_LOCK:
+        fd = services.fd_open(request.app.state.conn, b["id"], int(b["principal"]), int(b["term"]),
+                              time.time(), "teller", demand_rate=eco["demand_rate"],
+                              fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
+                              event_duration_min=eco["event_duration_min"])
+    return {"fd_id": fd}
+
+
+@router.post("/api/teller/fd/close")
+async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json()
+    async with MUTATION_LOCK:
+        services.fd_close(request.app.state.conn, b["id"], b["fd_id"], time.time(), "teller",
+                          demand_rate=_eco(request)["demand_rate"])
+    return {"ok": True}
+
+
+@router.post("/api/teller/trade")
+async def t_trade(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json(); cfg = request.app.state.config
+    async with MUTATION_LOCK:
+        res = services.execute_trade(request.app.state.conn, b["id"], b["stock_id"], b["side"],
+                                     int(b["shares"]), time.time(), "teller",
+                                     tuning=cfg.tuning, sigma=cfg.tuning.sigma)
+    await request.app.state.broadcaster.publish({"type": "prices",
+        "data": [{"stock_id": b["stock_id"], "price": res["price"]}]})
+    return res
+
+
+@router.post("/api/teller/news")
+async def t_news(request: Request, _: bool = Depends(require_staff)):
+    b = await request.json()
+    repo.add_news(request.app.state.conn, b["text"], "manual", time.time())
+    await request.app.state.broadcaster.publish({"type": "news",
+        "data": {"text": b["text"], "source": "manual"}})
+    return {"ok": True}
+
+
+@router.get("/api/export")
+async def export(request: Request, _: bool = Depends(require_staff)):
+    conn = request.app.state.conn
+    now = time.time()
+    prices = {s["stock_id"]: s["price"] for s in repo.all_stocks(conn)}
+    amounts = {}
+    for g in range(10):
+        for i in range(1, 13):
+            mid = f"{g}-{i}"
+            m = repo.get_member(conn, mid)
+            bal = services.accrue_balance(conn, mid, now)
+            fds = [{"principal": f["principal"], "term_minutes": f["term_minutes"],
+                    "rate_per_min": f["rate_per_min"]} for f in repo.open_fds(conn, mid)]
+            holds = [{"stock_id": h["stock_id"], "shares": h["shares"]} for h in repo.list_holdings(conn, mid)]
+            le = 0.0 if m["loan_taken_at"] is None else (now - m["loan_taken_at"]) / 60.0
+            amounts[mid] = member_amount(balance=bal, open_fds=fds, holdings=holds,
+                                         prices=prices, debt=m["debt"], loan_elapsed_min=le)
+    csv_text = build_csv(amounts)
+    return Response(csv_text, media_type="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=paper-market.csv"})

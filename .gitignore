@@ -8,6 +8,9 @@ docs/superpowers/
 # python
 __pycache__/
 *.py[cod]
+.venv/
+venv/
+.pytest_cache/
 
 # runtime data
 data/

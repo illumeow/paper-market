@@ -30,13 +30,13 @@ def test_close_matured_pays_contract_rate():
     conn = _m()
     fd = services.fd_open(conn, "0-1", 1000, 30, now=0.0, actor="teller", **RATES)
     services.fd_close(conn, "0-1", fd, now=30 * 60, actor="teller", demand_rate=0.005)
-    # balance: 4000 + 1000*1.01^30 ≈ 4000 + 1348
-    assert repo.get_member(conn, "0-1")["balance"] == 5348
+    # leftover 4000 accrues at 0.5%/min: 4000*1.005^30 ≈ 4646; matured 1000*1.01^30 ≈ 1348
+    assert repo.get_member(conn, "0-1")["balance"] == 5994
 
 
 def test_close_early_uses_penalty_rate():
     conn = _m()
     fd = services.fd_open(conn, "0-1", 1000, 30, now=0.0, actor="teller", **RATES)
     services.fd_close(conn, "0-1", fd, now=10 * 60, actor="teller", demand_rate=0.005)
-    # 4000 + 1000*1.004^10 ≈ 4000 + 1041
-    assert repo.get_member(conn, "0-1")["balance"] == 5041
+    # leftover 4000 accrues at 0.5%/min: 4000*1.005^10 ≈ 4205; early exit 1000*1.004^10 ≈ 1041
+    assert repo.get_member(conn, "0-1")["balance"] == 5246

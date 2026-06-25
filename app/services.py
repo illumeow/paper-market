@@ -102,7 +102,7 @@ def fd_close(conn, mid, fd_id, now, actor, *, demand_rate):
     else:
         payout = _int(fd_early_exit(fd["principal"], elapsed, demand_rate))
         matured = False
-    m = repo.get_member(conn, mid)
-    repo.update_member(conn, mid, balance=m["balance"] + payout)
+    bal = accrue_balance(conn, mid, now)
+    repo.update_member(conn, mid, balance=bal + payout)
     repo.close_fd(conn, fd_id, matured)
     repo.add_txn(conn, mid, "fd_close", payout, now, actor)

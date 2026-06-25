@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paper Market — Member</title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ── Login ────────────────────────────────── -->
+<div id="login-section" class="login-wrap">
+  <div class="login-box">
+    <h1>Paper Market</h1>
+    <div class="field">
+      <label for="pin-input">Enter your 4-digit PIN</label>
+      <input id="pin-input" type="password" inputmode="numeric" maxlength="4"
+             autocomplete="current-password" placeholder="••••" />
+    </div>
+    <button id="login-btn" class="btn btn--primary btn--full">Log in</button>
+  </div>
+</div>
+
+<!-- ── App ──────────────────────────────────── -->
+<div id="app-section" class="container hidden">
+  <div class="page-header">
+    <h1>My Portfolio</h1>
+    <span id="member-id-label" class="muted"></span>
+  </div>
+
+  <!-- balance / debt -->
+  <div class="stats-row" id="stats-row">
+    <div class="stat-box">
+      <div class="label">Balance</div>
+      <div class="value money" id="stat-balance">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="label">Debt</div>
+      <div class="value money neg" id="stat-debt">—</div>
+    </div>
+  </div>
+
+  <!-- Holdings -->
+  <div class="card" id="holdings-card">
+    <h2>Holdings</h2>
+    <div id="holdings-list" class="muted">No shares held.</div>
+  </div>
+
+  <!-- Fixed Deposits -->
+  <div class="card" id="fd-card">
+    <h2>Fixed Deposits</h2>
+    <div id="fd-list" class="muted">No open FDs.</div>
+  </div>
+
+  <!-- Market & Trade -->
+  <div class="card">
+    <h2>Market</h2>
+    <div id="market-list" class="stock-list"></div>
+  </div>
+</div>
+
+<script type="module" src="/js/member.js"></script>
+</body>
+</html>

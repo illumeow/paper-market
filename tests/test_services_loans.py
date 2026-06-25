@@ -33,3 +33,12 @@ def test_repay_reduces_debt_and_balance():
     services.loan_repay(conn, "0-1", 500, now=0.0, actor="teller")  # owed≈1000 at t=0
     m = repo.get_member(conn, "0-1")
     assert m["debt"] == 500 and m["balance"] == 9500
+
+
+def test_overpay_repays_only_what_is_owed():
+    conn = _m(bal=10000, debt=1000, loan_at=0.0)
+    services.loan_repay(conn, "0-1", 5000, now=0.0, actor="teller")  # owed≈1000 at t=0, overpay 5000
+    m = repo.get_member(conn, "0-1")
+    assert m["debt"] == 0
+    assert m["balance"] == 9000   # only 1000 charged, not 5000
+    assert m["loan_taken_at"] is None

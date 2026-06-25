@@ -66,12 +66,13 @@ def loan_repay(conn, mid, amount, now, actor):
     elapsed = max(0.0, (now - m["loan_taken_at"]) / 60.0)
     owed = _int(loan_owed(m["debt"], elapsed))
     bal = accrue_balance(conn, mid, now)
-    if amount > bal:
+    pay = min(amount, owed)
+    if pay > bal:
         raise ValueError("insufficient balance to repay")
-    new_debt = max(0, owed - amount)
-    repo.update_member(conn, mid, balance=bal - amount, debt=new_debt,
+    new_debt = owed - pay
+    repo.update_member(conn, mid, balance=bal - pay, debt=new_debt,
                        loan_taken_at=(None if new_debt == 0 else now))
-    repo.add_txn(conn, mid, "loan_repay", -amount, now, actor)
+    repo.add_txn(conn, mid, "loan_repay", -pay, now, actor)
 
 
 def fd_open(conn, mid, principal, term, now, actor, *, demand_rate, fd_rate_30,
@@ -117,7 +118,7 @@ def execute_trade(conn, mid, sid, side, shares, now, actor, *, tuning, sigma, rn
     if s is None:
         raise ValueError("unknown stock")
     price = s["price"]
-    cost = int(round(price * shares))
+    cost = _int(Decimal(str(price)) * shares)
     bal = accrue_balance(conn, mid, now)
     held = repo.get_holding(conn, mid, sid)
 

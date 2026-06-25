@@ -1,3 +1,4 @@
+import logging
 import os
 import tomllib
 from dataclasses import dataclass, field
@@ -23,6 +24,14 @@ def load_config(path="config/config.toml") -> Config:
     t = raw["tuning"]
     tuning = Tuning(beta=t["beta"], depth=t["depth"], mu=t["mu"],
                     net_flow_decay=t["net_flow_decay"], gamma=t["gamma"], sigma=t["sigma"])
+    staff_password = os.environ.get("STAFF_PASSWORD") or ""
+    secret_key = os.environ.get("SECRET_KEY") or ""
+    if not staff_password:
+        logging.warning("STAFF_PASSWORD not set — using insecure dev default; set it in production")
+        staff_password = "dev-staff"
+    if not secret_key:
+        logging.warning("SECRET_KEY not set — using insecure dev default; set it in production")
+        secret_key = "dev-secret"
     return Config(
         economy=raw["economy"],
         tuning=tuning,
@@ -31,6 +40,6 @@ def load_config(path="config/config.toml") -> Config:
         event_duration_min=raw["economy"]["event_duration_min"],
         stocks=raw.get("stocks", []),
         events=raw.get("events", []),
-        staff_password=os.environ.get("STAFF_PASSWORD", "dev-staff"),
-        secret_key=os.environ.get("SECRET_KEY", "dev-secret"),
+        staff_password=staff_password,
+        secret_key=secret_key,
     )

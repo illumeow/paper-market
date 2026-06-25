@@ -1,0 +1,15 @@
+# secrets / credentials — master PIN list, never commit
+config/pins.csv
+.env
+
+# brainstorming / design docs (local only)
+docs/superpowers/
+
+# python
+__pycache__/
+*.py[cod]
+
+# runtime data
+data/
+*.db
+*.sqlite3

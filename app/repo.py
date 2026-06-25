@@ -111,7 +111,7 @@ def close_fd(conn, fd_id, matured):
 
 
 def add_news(conn, text, source, ts):
-    conn.execute("INSERT INTO news(text,ts,source) VALUES(?,?,?)", (text, source, ts))
+    conn.execute("INSERT INTO news(text,source,ts) VALUES(?,?,?)", (text, source, ts))
     conn.commit()
 
 

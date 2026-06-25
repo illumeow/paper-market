@@ -20,3 +20,12 @@ def test_seed_members_stocks_idempotent(tmp_path):
     # event start fixed on first seed
     from app.clock import event_start
     assert event_start(conn) == 1000.0
+
+
+def test_add_news_round_trips_columns():
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    repo.add_news(conn, "Big news", "event", 1234.5)
+    row = repo.current_news(conn, limit=1)[0]
+    assert row["text"] == "Big news"
+    assert row["source"] == "event"
+    assert row["ts"] == 1234.5

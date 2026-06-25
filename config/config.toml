@@ -1,0 +1,69 @@
+[economy]
+start_balance = 1000
+relief_amount = 500
+loan_cap = 5000
+demand_rate = 0.005
+fd_rate_30 = 0.01
+fd_rate_60 = 0.02
+loan_rate = 0.03
+cooldown_min = 5
+quarter_min = 30
+event_duration_min = 120
+
+[tuning]
+beta = 0.5
+depth = 500
+mu = 0.02
+net_flow_decay = 0.95
+gamma = 0.02
+sigma = 0.005
+tick_seconds = 5
+
+[[stocks]]
+id = "TECH"
+name = "TechCo"
+init_price = 100
+floor = 30
+ceiling = 300
+nominal_supply = 10000
+s0 = 3000
+[[stocks]]
+id = "BANK"
+name = "BankCorp"
+init_price = 80
+floor = 24
+ceiling = 240
+nominal_supply = 10000
+s0 = 3000
+[[stocks]]
+id = "ENGY"
+name = "EnergyX"
+init_price = 120
+floor = 36
+ceiling = 360
+nominal_supply = 10000
+s0 = 3000
+[[stocks]]
+id = "FOOD"
+name = "FoodInc"
+init_price = 50
+floor = 15
+ceiling = 150
+nominal_supply = 10000
+s0 = 3000
+[[stocks]]
+id = "MEDIA"
+name = "MediaPlus"
+init_price = 150
+floor = 45
+ceiling = 450
+nominal_supply = 10000
+s0 = 3000
+
+# Example event (edit/extend for the real schedule):
+[[events]]
+at_min = 35
+stock_id = "ENGY"
+pct = 0.10
+duration_min = 5
+headline = "Energy demand spikes — EnergyX surges"

@@ -141,6 +141,15 @@ async function init() {
   }
 }
 
+// ── Stream with auto-reconnect ────────────────────────────
+function connectStream() {
+  const es = stream(onPrices, onNews);
+  es.onerror = () => {
+    es.close();
+    setTimeout(connectStream, 3000);
+  };
+}
+
 function showApp(me) {
   loginSection.classList.add("hidden");
   appSection.classList.remove("hidden");
@@ -148,7 +157,7 @@ function showApp(me) {
   // Load market
   api("/api/market").then(market => renderMarket(market)).catch(err => toast(err.message, "err"));
   // Subscribe to stream
-  stream(onPrices, onNews);
+  connectStream();
 }
 
 // ── Login ───────────────────────────────────────────────

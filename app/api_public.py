@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 from app import repo
+from app.clock import event_start, elapsed_min
 
 router = APIRouter()
 
@@ -18,4 +19,6 @@ async def dashboard(request: Request):
                        "pct_change": round(pct, 2), "volume": vol,
                        "history": [{"ts": h["ts"], "price": h["price"]} for h in hist]})
     news = [dict(n) for n in repo.current_news(conn, limit=10)]
-    return {"stocks": stocks, "news": news}
+    return {"stocks": stocks, "news": news,
+            "started": event_start(conn) is not None,
+            "elapsed_min": elapsed_min(conn)}

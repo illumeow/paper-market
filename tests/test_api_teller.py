@@ -41,3 +41,32 @@ def test_cooldown_locks_second_lookup(client):
 
 def test_wrong_staff_password(client):
     assert client.post("/api/login/staff", json={"password": "nope"}).status_code == 403
+
+
+def test_start_sets_clock_and_is_idempotent(client):
+    # Before start: dashboard shows not started
+    dash = client.get("/api/dashboard").json()
+    assert dash["started"] is False
+    assert dash["elapsed_min"] == 0 or dash["elapsed_min"] == 0.0
+
+    # Staff login and call start
+    _staff(client)
+    r = client.post("/api/teller/start")
+    assert r.status_code == 200
+    assert r.json()["started"] is True
+    since = r.json()["since"]
+    assert since is not None
+
+    # Dashboard now shows started
+    dash = client.get("/api/dashboard").json()
+    assert dash["started"] is True
+
+    # Call start again: since must not change (idempotent)
+    r2 = client.post("/api/teller/start")
+    since2 = r2.json()["since"]
+    assert since2 == since
+
+
+def test_start_requires_staff(client):
+    # No auth: 403
+    assert client.post("/api/teller/start").status_code == 403

@@ -1,6 +1,8 @@
 from decimal import Decimal, ROUND_HALF_UP
+import uuid
 from app import repo
-from app.domain.interest import demand_balance, loan_owed
+from app.clock import elapsed_min
+from app.domain.interest import demand_balance, loan_owed, fd_maturity, fd_early_exit
 
 
 def _int(d) -> int:
@@ -68,3 +70,39 @@ def loan_repay(conn, mid, amount, now, actor):
     repo.update_member(conn, mid, balance=bal - amount, debt=new_debt,
                        loan_taken_at=(None if new_debt == 0 else now))
     repo.add_txn(conn, mid, "loan_repay", -amount, now, actor)
+
+
+def fd_open(conn, mid, principal, term, now, actor, *, demand_rate, fd_rate_30,
+            fd_rate_60, event_duration_min):
+    if term not in (30, 60):
+        raise ValueError("term must be 30 or 60")
+    if principal <= 0:
+        raise ValueError("principal must be positive")
+    if elapsed_min(conn, now) + term > event_duration_min:
+        raise ValueError("past opening cutoff")
+    bal = accrue_balance(conn, mid, now)
+    if principal > bal:
+        raise ValueError("insufficient balance")
+    rate = fd_rate_30 if term == 30 else fd_rate_60
+    fd_id = uuid.uuid4().hex[:12]
+    repo.update_member(conn, mid, balance=bal - principal)
+    repo.add_fd(conn, fd_id, mid, principal, term, rate, now)
+    repo.add_txn(conn, mid, "fd_open", -principal, now, actor)
+    return fd_id
+
+
+def fd_close(conn, mid, fd_id, now, actor, *, demand_rate):
+    fd = repo.get_fd(conn, fd_id)
+    if fd is None or fd["closed"] or fd["member_id"] != mid:
+        raise ValueError("invalid fixed deposit")
+    elapsed = max(0.0, (now - fd["created_at"]) / 60.0)
+    if elapsed >= fd["term_minutes"]:
+        payout = _int(fd_maturity(fd["principal"], fd["term_minutes"], fd["rate_per_min"]))
+        matured = True
+    else:
+        payout = _int(fd_early_exit(fd["principal"], elapsed, demand_rate))
+        matured = False
+    m = repo.get_member(conn, mid)
+    repo.update_member(conn, mid, balance=m["balance"] + payout)
+    repo.close_fd(conn, fd_id, matured)
+    repo.add_txn(conn, mid, "fd_close", payout, now, actor)

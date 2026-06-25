@@ -2,6 +2,7 @@ import asyncio
 import time
 from app.locks import MUTATION_LOCK
 from app import events
+from app.clock import event_start
 
 
 async def run_ticker(app):
@@ -12,6 +13,8 @@ async def run_ticker(app):
     while True:
         await asyncio.sleep(cfg.tick_seconds)
         now = time.time()
+        if event_start(app.state.conn) is None:
+            continue   # event not started: market frozen, no price evolution
         async with MUTATION_LOCK:
             updated = events.tick_prices(app.state.conn, now, tuning=cfg.tuning,
                                          sigma=cfg.tuning.sigma, quarter_min=cfg.quarter_min,

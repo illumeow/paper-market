@@ -27,7 +27,7 @@
 - 會員只用 **PIN** 登入，不需輸入 member_id。PIN 為 **4 位數、全域唯一**。
 - PIN 以 **sha256** hex 儲存（不存明碼），login 設定一組 signed-cookie session（itsdangerous）。
 - Login 有 rate limit（每 IP 每分鐘上限），正式環境走 HTTPS。
-- PIN 在活動前就**預先指派**並凍結於 `config/pins.csv`（由 `scripts/gen_pins.py` 一次性產生，排除明顯的數字樣式），以便事先印製、公告給會員。seed 時把這些 PIN 雜湊成 sha256 寫進 DB —— **執行期不會重新產生**。
+- PIN 在活動前就**預先指派**並凍結於 `config/pins.csv`（由 `scripts/gen_pins.py` 一次性產生，排除明顯的數字樣式），以便事先印製、公告給會員。provision（`scripts/setup_db.py`，見 §3.1）時把這些 PIN 雜湊成 sha256 寫進 DB —— **執行期不會重新產生**。
 
 ### 2.2 行員登入
 
@@ -40,7 +40,7 @@
 
 ## 3. 資料模型（Data Model）
 
-狀態存在 SQLite（WAL mode）。利息採 **lazy accrual** —— 不跑 cron，而是在每次存取帳戶時，依 timestamp 即時把利息算進去。event clock（活動起始時間）存於 `meta` table，process 重啟後仍存活。
+狀態存在 SQLite（WAL mode）。利息採 **lazy accrual** —— 不跑 cron，而是在每次存取帳戶時，依 timestamp 即時把利息算進去。**event clock（活動起始時間 `event_start_at`）不在 provision 時設定，而是由行員開跑時的明確動作設定**（見 §3.1），存於 `meta` table，process 重啟後仍存活。
 
 每位學員有單一帳戶，欄位如下：
 
@@ -58,6 +58,17 @@
 | `fixed_deposits` | list\<FixedDeposit\> | 進行中的定存紀錄（見 §4）。 |
 
 > 內部利息運算一律以 `Decimal` 進行，落到使用者／DB 的金額才四捨五入（round half-up）為整數。持股為整數，無碎股。
+
+### 3.1 DB 設定、開機與活動開跑（lifecycle）
+
+**設定（provision）與執行期（runtime）分離** —— DB 的初始化是一個明確、刻意的動作，不混在 app 開機裡：
+
+- **provision**：`python scripts/setup_db.py` 建立 schema 並寫入 members（PIN→sha256）／stocks／events，資料來源是當下的 `config.toml` + `config/pins.csv`。它**不設定 event clock**。`--reset`（搭配 `--force` 於非互動環境）會清空整個 DB 重建 —— 用於賽前準備或重測。
+  - 注意：events 是 provision 時一次性寫入的；之後改 `config.toml` 的 `[[events]]` **不會**影響既有 DB，需 `--reset` 重建。
+- **開機（resume only）**：app 啟動時**只連線、不 seed**。若 DB 尚未 provision（沒有 members），會在啟動（lifespan startup）時明確報錯，要你先跑 `setup_db.py`。因此活動中不慎 Ctrl-C／crash 後重啟，會**接續既有狀態**而非重置 —— 這正是用 on-disk DB 的目的。
+- **開跑（kickoff）**：活動正式開始時，行員在 Teller Panel 按 **Start event**（`POST /api/teller/start`，staff-only），此時才把 `event_start_at` 設為 now。此動作**idempotent**：重複按不會重設時鐘（避免活動中誤觸歸零）。`at_min`／elapsed 全部以這個開跑時刻為基準。
+- **開跑前的狀態**：時鐘未設前，**價格凍結**（ticker 不推進價格）、**禁止買賣**（trade route 回 409 `event not started`）。但**銀行業務（存提／貸款／定存／紓困）開跑前仍可操作**，方便賽前先幫會員開戶／佈置。
+- Public Dashboard 會顯示 `started` 與 `elapsed_min`（開跑前顯示「尚未開始」）。
 
 ---
 
@@ -196,6 +207,8 @@ per-event 的調校參數（config `[tuning]`，執行期不經 UI 編輯）：
 
 沒有批次結算。每筆 buy/sell 立即依模型重算並更新價格（買賣成本以**成交前價格**計算）。此外有一個 **5 秒 ticker**，每次推進所有股票價格、套用進行中的事件 drift、處理季度 reset。新價格透過 SSE 即時推給 Public Dashboard 與所有開啟的 Member Web App session。
 
+> **開跑前市場凍結**：活動未開跑（`event_start_at` 未設）時，ticker **跳過**價格推進、買賣 route 回 409，價格維持在初始值不動（見 §3.1）。開跑後才開始上述演進。
+
 > 已**移除**原規格的 `max_holding_ratio`（anti-whale 防巨鯨）限制 —— 不再對單一會員持股比例設限。
 
 ---
@@ -208,6 +221,8 @@ per-event 的調校參數（config `[tuning]`，執行期不經 UI 編輯）：
 - 到時觸發：在 `duration_min` 期間以 **ramped** 方式套用價格效果 —— 每 tick 的 drift 設計成讓整段複利後 ≈ `pct`（`per_tick = (1 + pct) ^ (tick_min / duration_min) − 1`）。可選擇自動發布 `headline` 為一則 news。
 - 事件的 drift 會 **bypass 季度 band 並 ratchet 之**（見 §5.3）。
 - **手動 news 仍為 display-only**：行員可隨時發布一則文字新聞，只顯示在看板上，**不影響價格**。
+
+事件以**開跑時刻**（§3.1）為基準計時：`at_min` 是相對開跑後的分鐘數，elapsed 達到 `at_min` 時觸發一次（`fired` 旗標持久化，每個 DB 只觸發一次）。開跑前 elapsed 視為 0，不會有事件觸發。
 
 範例事件：`at_min=35`，ENGY，`pct=0.10`，`duration_min=5`，headline「Energy demand spikes — EnergyX surges」。
 
@@ -222,8 +237,9 @@ per-event 的調校參數（config `[tuning]`，執行期不經 UI 編輯）：
 - 以 ID 查詢會員（觸發一次 visit，含 cooldown gate；被鎖定時顯示倒數）。
 - 檢視餘額、debt、進行中的定存、持股、紓困狀態。
 - 處理：deposit、withdraw、開立／平倉定存、loan 撥款、loan 還款、relief。
-- **代客下單** —— 為沒有手機的會員買賣股票。
+- **代客下單** —— 為沒有手機的會員買賣股票（開跑後才可用）。
 - 發布手動 news 到 Public Dashboard。
+- **Start event** 按鈕 —— 活動開跑，設定 event clock（見 §3.1）；按鈕僅在尚未開跑時出現，開跑後顯示「running／elapsed」。
 - **Export** 按鈕（見 §8）。
 
 所有會變動狀態的操作都在全域 `MUTATION_LOCK` 下執行。
@@ -233,7 +249,7 @@ per-event 的調校參數（config `[tuning]`，執行期不經 UI 編輯）：
 可在學員自己手機或共用裝置開啟的 web app。會員只輸入 **PIN** 登入。能力：
 
 - **Portfolio** —— 餘額、各檔持股、進行中定存、debt。
-- **股票交易** —— 買賣 5 檔任一；買單需現金足夠、賣單需持股足夠，否則擋下。無持股比例上限。
+- **股票交易** —— 買賣 5 檔任一；買單需現金足夠、賣單需持股足夠，否則擋下。無持股比例上限。**活動開跑前無法交易**（route 回 409）。
 - **即時行情** —— 與 Public Dashboard 同源的即時價格與圖表；透過 SSE 推播，斷線自動重連。
 
 > 透過 Member Web App 的交易會即時更新所有狀態（餘額、持股、價格），不需經過行員。
@@ -245,6 +261,7 @@ per-event 的調校參數（config `[tuning]`，執行期不經 UI 編輯）：
 - 5 檔股票的即時價格折線圖（Chart.js）。
 - 每檔 summary：現價、自開盤以來的 % change、累計成交量（volume）。
 - **News banner** —— 顯示事件自動發布與行員手動發布的新聞。
+- **活動狀態列** —— 開跑前顯示「尚未開始」，開跑後顯示「Live · elapsed N min」（讀 `/api/dashboard` 的 `started`／`elapsed_min`）。因開跑前無 SSE 價格推播，看板另以約 15 秒輪詢 `/api/dashboard` 來反映開跑的狀態切換。
 - 透過 SSE 接收即時價格與新聞，`EventSource` 斷線自動重連。
 
 ---
@@ -299,6 +316,7 @@ sum,1234,sum,5678,...,sum,9012
 - 自架 VM，DNS A record 指向該機；Caddy 依 `$DOMAIN` 自動申請憑證。
 - **config-driven**：stocks／events／tuning 全在 `config/config.toml`；PIN 預先產生於 `config/pins.csv`（gitignored，機密，需另行複製到 VM）。
 - 環境變數：`DOMAIN`、`STAFF_PASSWORD`、`SECRET_KEY`；DB 路徑 `DB_PATH`（預設 `/data/paper.db`，以 volume 持久化）。
+- **provision 是獨立一步**（app 開機不再 seed，見 §3.1）：build 後、`up` 前先跑一次性指令把 `/data` volume 的 DB 建好：`docker compose run --rm app python scripts/setup_db.py --reset --force`。之後 `docker compose up -d`；活動開跑時於 Teller Panel 按 **Start event**。
 
 ---
 

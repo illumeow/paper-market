@@ -1,6 +1,5 @@
 import os
 import asyncio
-import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -17,6 +16,12 @@ from app.api_public import router as public_router
 def create_app():
     @asynccontextmanager
     async def lifespan(app):
+        n = app.state.conn.execute("SELECT COUNT(*) c FROM members").fetchone()["c"]
+        if n == 0:
+            raise RuntimeError(
+                f"paper-market DB at {app.state.db_path!r} is not provisioned "
+                f"(0 members). Run: python scripts/setup_db.py  (add --reset to wipe)."
+            )
         app.state.ticker = asyncio.create_task(run_ticker(app))
         try:
             yield
@@ -29,9 +34,9 @@ def create_app():
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     conn = db.connect(db_path)
     db.init_schema(conn)
-    repo.seed(conn, cfg, now=time.time())
     app.state.config = cfg
     app.state.conn = conn
+    app.state.db_path = db_path
     app.state.repo = repo
     app.state.broadcaster = Broadcaster()
     app.state.rate_limiter = RateLimiter(max_per_min=5)

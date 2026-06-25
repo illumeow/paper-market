@@ -79,3 +79,14 @@ flush_interval — Caddy 對 SSE 不緩衝的設定（-1）
 config-driven — 以 config.toml 驅動 stocks／events／tuning
 DOMAIN / STAFF_PASSWORD / SECRET_KEY — 部署所需環境變數
 DB_PATH — SQLite 檔路徑
+provision — 賽前一次性建立 DB 資料（members/stocks/events），不設時鐘
+setup_db.py — provision/reset 的 CLI 腳本
+runtime — 執行期（app 開機後的常態運作）
+resume — 重啟後接續既有狀態（不重置）
+lifespan — FastAPI 的啟動／關閉生命週期 hook
+kickoff — 活動正式開跑（設定 event clock 的時刻）
+Start event — Teller Panel 上觸發開跑的按鈕
+event_start_at — 活動起始時間（meta 中的鍵）
+started — dashboard 回傳的「是否已開跑」旗標
+elapsed_min — 自開跑起經過的分鐘數
+fired — 事件是否已觸發過的持久化旗標

@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 from app import repo, services
 from app.auth import pin_hash, make_token, require_member, COOKIE
+from app.clock import event_start
 
 router = APIRouter()
 
@@ -44,6 +45,8 @@ async def market(request: Request):
 
 @router.post("/api/trade")
 async def trade(request: Request, mid: str = Depends(require_member)):
+    if event_start(request.app.state.conn) is None:
+        raise HTTPException(409, "event not started")
     from app.locks import MUTATION_LOCK
     body = await request.json()
     cfg = request.app.state.config

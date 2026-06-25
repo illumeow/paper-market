@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse, Response
 from app import repo, services
 from app.auth import make_token, require_staff, COOKIE
+from app.clock import event_start, set_event_start, elapsed_min
 from app.domain.cooldown import visit_status
 from app.domain.networth import member_amount
 from app.domain.export_csv import build_csv
@@ -20,6 +21,16 @@ async def login_staff(request: Request):
     resp = JSONResponse({"ok": True})
     resp.set_cookie(COOKIE, tok, httponly=True, samesite="lax")
     return resp
+
+
+@router.post("/api/teller/start")
+async def t_start(request: Request, _: bool = Depends(require_staff)):
+    conn = request.app.state.conn
+    async with MUTATION_LOCK:
+        if event_start(conn) is None:        # idempotent: only set once, never reset mid-event
+            set_event_start(conn, time.time())
+        since = event_start(conn)
+    return {"started": True, "since": since, "elapsed_min": elapsed_min(conn)}
 
 
 @router.get("/api/member/{mid}")
@@ -110,6 +121,8 @@ async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
 
 @router.post("/api/teller/trade")
 async def t_trade(request: Request, _: bool = Depends(require_staff)):
+    if event_start(request.app.state.conn) is None:
+        raise HTTPException(409, "event not started")
     b = await request.json(); cfg = request.app.state.config
     async with MUTATION_LOCK:
         res = services.execute_trade(request.app.state.conn, b["id"], b["stock_id"], b["side"],

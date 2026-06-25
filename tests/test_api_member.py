@@ -4,9 +4,17 @@ from starlette.testclient import TestClient
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "t.db"))
+    db_path = str(tmp_path / "t.db")
+    monkeypatch.setenv("DB_PATH", db_path)
     monkeypatch.setenv("STAFF_PASSWORD", "staffpw")
     monkeypatch.setenv("SECRET_KEY", "k")
+    # provision the temp DB (boot no longer seeds)
+    import app.db as _db
+    from app.config import load_config
+    from app import repo
+    c = _db.connect(db_path); _db.init_schema(c)
+    repo.provision(c, load_config(), pins_path="config/pins.csv")
+    c.close()
     from app.main import create_app
     return TestClient(create_app())
 
@@ -33,3 +41,15 @@ def test_bad_pin_rejected(client):
 def test_member_cannot_access_teller(client):
     _login_member(client, None)
     assert client.get("/api/member/0-1").status_code == 403
+
+
+def test_trade_blocked_before_start_then_allowed(client):
+    from app.clock import set_event_start
+    _login_member(client, None)
+    assert client.get("/api/dashboard").json()["started"] is False
+    r = client.post("/api/trade", json={"stock_id": "TECH", "side": "buy", "shares": 1})
+    assert r.status_code == 409
+    set_event_start(client.app.state.conn, time.time())
+    r2 = client.post("/api/trade", json={"stock_id": "TECH", "side": "buy", "shares": 1})
+    assert r2.status_code == 200
+    assert "price" in r2.json() and "shares" in r2.json()

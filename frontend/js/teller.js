@@ -235,6 +235,50 @@ document.getElementById("news-btn").addEventListener("click", async () => {
   }
 });
 
+// ── Event Control ─────────────────────────────────────────
+const eventStatusLine = document.getElementById("event-status-line");
+const startEventBtn   = document.getElementById("start-event-btn");
+
+async function loadEventStatus() {
+  try {
+    const data = await api("/api/dashboard");
+    if (data.started) {
+      const elapsed = Math.round(data.elapsed_min);
+      eventStatusLine.textContent = `Event running — elapsed ${elapsed} min`;
+      eventStatusLine.className = "pos";
+      startEventBtn.style.display = "none";
+    } else {
+      eventStatusLine.textContent = "Event not started.";
+      eventStatusLine.className = "muted";
+      startEventBtn.style.display = "";
+    }
+  } catch (err) {
+    eventStatusLine.textContent = "Could not load event status.";
+    eventStatusLine.className = "muted";
+  }
+}
+
+startEventBtn.addEventListener("click", async () => {
+  startEventBtn.disabled = true;
+  try {
+    const res = await api("/api/teller/start", "POST");
+    const elapsed = Math.round(res.elapsed_min);
+    eventStatusLine.textContent = `Event running (started just now) — elapsed ${elapsed} min`;
+    eventStatusLine.className = "pos";
+    startEventBtn.style.display = "none";
+    toast("Event started!", "ok");
+  } catch (err) {
+    toast(err.message, "err");
+    startEventBtn.disabled = false;
+  }
+});
+
+// Load event status whenever the app section becomes visible (after login)
+loginBtn.addEventListener("click", async () => {
+  // Wait a tick so the login completes first (the existing handler runs first)
+  setTimeout(loadEventStatus, 300);
+});
+
 // ── Check if already logged in ────────────────────────────
 (async () => {
   try {

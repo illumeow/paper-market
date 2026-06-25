@@ -163,14 +163,42 @@ function connectStream() {
   };
 }
 
+// ── Event status indicator ────────────────────────────────
+const eventStatusEl = document.getElementById("event-status");
+
+function updateEventStatus(started, elapsed_min) {
+  if (started) {
+    const elapsed = Math.round(elapsed_min);
+    eventStatusEl.textContent = `● Live · elapsed ${elapsed} min`;
+    eventStatusEl.style.color = "var(--green)";
+  } else {
+    eventStatusEl.textContent = "⏳ Event not started";
+    eventStatusEl.style.color = "var(--yellow)";
+  }
+}
+
+// ── Periodic poll (every 15s) to pick up kickoff transition ──
+async function pollDashboard() {
+  try {
+    const data = await api("/api/dashboard");
+    updateEventStatus(data.started, data.elapsed_min);
+    // Optionally refresh summary and news too
+    if (data.stocks && data.stocks.length > 0) renderSummary(data.stocks);
+    if (data.news) renderNews(data.news);
+  } catch (_) { /* ignore poll errors silently */ }
+}
+
 // ── Load ──────────────────────────────────────────────────
 async function load() {
   try {
     const data = await api("/api/dashboard");
+    updateEventStatus(data.started, data.elapsed_min);
     renderSummary(data.stocks);
     renderCharts(data.stocks);
     renderNews(data.news);
     connectStream();
+    // Start periodic poll every 15s
+    setInterval(pollDashboard, 15000);
   } catch (err) {
     toast(err.message, "err");
   }

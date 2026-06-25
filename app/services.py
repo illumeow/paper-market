@@ -2,7 +2,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import uuid
 import random as _random
 from app import repo
-from app.clock import elapsed_min
+from app.clock import elapsed_min, accrued_minutes
 from app.domain.interest import demand_balance, loan_owed, fd_maturity, fd_early_exit
 from app.domain.price_engine import next_price
 
@@ -13,7 +13,7 @@ def _int(d) -> int:
 
 def accrue_balance(conn, mid, now) -> int:
     m = repo.get_member(conn, mid)
-    minutes = max(0.0, (now - m["balance_accrued_at"]) / 60.0)
+    minutes = accrued_minutes(conn, m["balance_accrued_at"], now)
     new_bal = _int(demand_balance(m["balance"], minutes))
     repo.update_member(conn, mid, balance=new_bal, balance_accrued_at=now)
     return new_bal
@@ -63,7 +63,7 @@ def loan_repay(conn, mid, amount, now, actor):
     m = repo.get_member(conn, mid)
     if m["debt"] <= 0:
         raise ValueError("no outstanding loan")
-    elapsed = max(0.0, (now - m["loan_taken_at"]) / 60.0)
+    elapsed = accrued_minutes(conn, m["loan_taken_at"], now)
     owed = _int(loan_owed(m["debt"], elapsed))
     bal = accrue_balance(conn, mid, now)
     pay = min(amount, owed)
@@ -98,7 +98,7 @@ def fd_close(conn, mid, fd_id, now, actor, *, demand_rate):
     fd = repo.get_fd(conn, fd_id)
     if fd is None or fd["closed"] or fd["member_id"] != mid:
         raise ValueError("invalid fixed deposit")
-    elapsed = max(0.0, (now - fd["created_at"]) / 60.0)
+    elapsed = accrued_minutes(conn, fd["created_at"], now)
     if elapsed >= fd["term_minutes"]:
         payout = _int(fd_maturity(fd["principal"], fd["term_minutes"], fd["rate_per_min"]))
         matured = True

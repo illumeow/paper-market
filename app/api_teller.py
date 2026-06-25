@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse, Response
 from app import repo, services
 from app.auth import make_token, require_staff, COOKIE
-from app.clock import event_start, set_event_start, elapsed_min
+from app.clock import event_start, set_event_start, elapsed_min, accrued_minutes
 from app.domain.cooldown import visit_status
 from app.domain.networth import member_amount
 from app.domain.export_csv import build_csv
@@ -155,7 +155,7 @@ async def export(request: Request, _: bool = Depends(require_staff)):
             fds = [{"principal": f["principal"], "term_minutes": f["term_minutes"],
                     "rate_per_min": f["rate_per_min"]} for f in repo.open_fds(conn, mid)]
             holds = [{"stock_id": h["stock_id"], "shares": h["shares"]} for h in repo.list_holdings(conn, mid)]
-            le = 0.0 if m["loan_taken_at"] is None else (now - m["loan_taken_at"]) / 60.0
+            le = accrued_minutes(conn, m["loan_taken_at"], now)
             amounts[mid] = member_amount(balance=bal, open_fds=fds, holdings=holds,
                                          prices=prices, debt=m["debt"], loan_elapsed_min=le)
     csv_text = build_csv(amounts)

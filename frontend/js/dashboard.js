@@ -111,7 +111,6 @@ function renderNews(newsItems) {
   newsFeed.innerHTML = newsItems.slice(0, 10).map(n => `
     <div class="news-item">
       <div>${escapeHtml(n.text)}</div>
-      <div class="news-meta">${Math.round(minSinceKickoff(n.ts))} min</div>
     </div>`
   ).join("");
 }
@@ -119,8 +118,7 @@ function renderNews(newsItems) {
 function prependNews(n) {
   const div = document.createElement("div");
   div.className = "news-item";
-  div.innerHTML = `<div>${escapeHtml(n.text)}</div>
-    <div class="news-meta">${Math.round(minSinceKickoff(Date.now() / 1000))} min</div>`;
+  div.innerHTML = `<div>${escapeHtml(n.text)}</div>`;
   newsFeed.insertBefore(div, newsFeed.firstChild);
   // Keep max 15
   while (newsFeed.children.length > 15) newsFeed.removeChild(newsFeed.lastChild);

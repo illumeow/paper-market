@@ -2,16 +2,20 @@ import asyncio
 import time
 from app.locks import MUTATION_LOCK
 from app import events
-from app.clock import event_start
+from app.clock import event_start, _TIME_SCALE
 
 
 async def run_ticker(app):
     cfg = app.state.config
+    # tick_min stays real (event-minutes per tick); TIME_SCALE compresses real
+    # time by ticking faster, so the ticks-per-event-minute — hence event-drift
+    # accumulation and noise statistics — match 1× exactly, just faster.
     tick_min = cfg.tick_seconds / 60.0
+    tick_sleep = cfg.tick_seconds / _TIME_SCALE
     import random
     repo = app.state.repo
     while True:
-        await asyncio.sleep(cfg.tick_seconds)
+        await asyncio.sleep(tick_sleep)
         now = time.time()
         if event_start(app.state.conn) is None:
             continue   # event not started: market frozen, no price evolution

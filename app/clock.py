@@ -1,4 +1,13 @@
+import os
 import time
+
+# Test-only fast-forward multiplier. Default 1.0 = real-time (production behavior
+# is byte-identical when TIME_SCALE is unset). Set TIME_SCALE=10 at launch to run
+# event-time 10× faster, e.g.:  TIME_SCALE=10 uvicorn app.main:app ...
+# Read once at import so the value is stable for the lifetime of the process.
+_TIME_SCALE = float(os.environ.get("TIME_SCALE", "1") or "1")
+if _TIME_SCALE <= 0:
+    _TIME_SCALE = 1.0
 
 
 def event_start(conn):
@@ -14,7 +23,7 @@ def set_event_start(conn, epoch):
 def elapsed_min(conn, now=None):
     now = now if now is not None else time.time()
     start = event_start(conn)
-    return 0.0 if start is None else (now - start) / 60.0
+    return 0.0 if start is None else (now - start) / 60.0 * _TIME_SCALE
 
 
 def accrued_minutes(conn, since_ts, now=None):
@@ -29,7 +38,7 @@ def accrued_minutes(conn, since_ts, now=None):
     start = event_start(conn)
     if start is None or since_ts is None:
         return 0.0
-    return max(0.0, (now - max(since_ts, start)) / 60.0)
+    return max(0.0, (now - max(since_ts, start)) / 60.0 * _TIME_SCALE)
 
 
 def quarter_index(conn, quarter_min, now=None):

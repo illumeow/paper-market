@@ -13,7 +13,7 @@ event_duration_min = 120
 [tuning]
 beta = 0.5
 depth = 500
-mu = 0.02
+mu = 0.002
 net_flow_decay = 0.95
 gamma = 0.02
 sigma = 0.005
@@ -25,7 +25,7 @@ name = "TechCo"
 init_price = 100
 floor = 30
 ceiling = 300
-nominal_supply = 10000
+nominal_supply = 1000
 s0 = 3000
 [[stocks]]
 id = "BANK"
@@ -33,7 +33,7 @@ name = "BankCorp"
 init_price = 80
 floor = 24
 ceiling = 240
-nominal_supply = 10000
+nominal_supply = 1000
 s0 = 3000
 [[stocks]]
 id = "ENGY"
@@ -41,7 +41,7 @@ name = "EnergyX"
 init_price = 120
 floor = 36
 ceiling = 360
-nominal_supply = 10000
+nominal_supply = 1000
 s0 = 3000
 [[stocks]]
 id = "FOOD"
@@ -49,7 +49,7 @@ name = "FoodInc"
 init_price = 50
 floor = 15
 ceiling = 150
-nominal_supply = 10000
+nominal_supply = 1000
 s0 = 3000
 [[stocks]]
 id = "MEDIA"
@@ -57,7 +57,7 @@ name = "MediaPlus"
 init_price = 150
 floor = 45
 ceiling = 450
-nominal_supply = 10000
+nominal_supply = 1000
 s0 = 3000
 
 # Example event (edit/extend for the real schedule):

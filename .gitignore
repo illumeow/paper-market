@@ -4,6 +4,7 @@ config/pins.csv
 
 # brainstorming / design docs (local only)
 docs/superpowers/
+CLAUDE.md
 
 # python
 __pycache__/

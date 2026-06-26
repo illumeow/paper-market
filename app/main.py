@@ -2,7 +2,7 @@ import os
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from app.config import load_config
 from app.errors import BusinessError
@@ -55,6 +55,9 @@ def create_app():
     app.include_router(teller_router)
     app.include_router(public_router)
     if os.path.isdir("frontend"):
+        @app.get("/")
+        async def _root():
+            return RedirectResponse("/dashboard.html")
         app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
     return app
 

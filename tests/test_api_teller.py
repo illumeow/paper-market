@@ -89,3 +89,9 @@ def test_teller_trade_blocked_before_start(client):
     set_event_start(client.app.state.conn, time.time())
     r2 = client.post("/api/teller/trade", json={"id": "0-1", "stock_id": "TECH", "side": "buy", "shares": 1})
     assert r2.status_code == 200
+
+
+def test_root_redirects_to_dashboard(client):
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code in (302, 307)
+    assert r.headers["location"] == "/dashboard.html"

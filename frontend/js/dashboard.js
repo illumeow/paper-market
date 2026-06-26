@@ -87,7 +87,6 @@ function renderCharts(stocks) {
         scales: {
           x: {
             type: "linear",
-            title: { display: true, text: "(min)", align: "end", color: "#8892a4" },
             ticks: { color: "#8892a4", precision: 0, maxTicksLimit: 8, maxRotation: 0 },
             grid:  { color: "#2e3350" },
           },

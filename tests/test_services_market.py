@@ -18,7 +18,9 @@ def test_buy_deducts_cost_and_adds_shares():
                            tuning=cfg.tuning, sigma=0.0)
     assert repo.get_holding(conn, "0-1", "TECH") == 5
     assert repo.get_member(conn, "0-1")["balance"] == bal0 - int(round(p0 * 5))
-    assert repo.get_stock(conn, "TECH")["total_supply_held"] == 5
+    # total_supply_held is provisioned to s0 (equilibrium anchor); a buy of 5 adds to it
+    s0 = repo.get_stock(conn, "TECH")["s0"]
+    assert repo.get_stock(conn, "TECH")["total_supply_held"] == s0 + 5
 
 
 def test_buy_insufficient_cash_blocked():

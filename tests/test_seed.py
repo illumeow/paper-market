@@ -61,6 +61,23 @@ def test_seed_members_stocks_idempotent(tmp_path):
     assert event_start(conn) == 1000.0
 
 
+def test_provision_sets_total_supply_held_to_s0(tmp_path):
+    """Freshly provisioned stocks must have total_supply_held == s0 so supply_pressure is 0."""
+    pins = tmp_path / "pins.csv"
+    pins.write_text("member_id,pin\n" + "".join(f"{g}-{i},{1000+g*12+i}\n"
+                    for g in range(10) for i in range(1, 13)))
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config()
+    repo.provision(conn, cfg, pins_path=str(pins), now=1000.0)
+    for s in cfg.stocks:
+        row = conn.execute("SELECT s0, total_supply_held FROM stocks WHERE stock_id=?",
+                           (s["id"],)).fetchone()
+        assert row["total_supply_held"] == s["s0"], (
+            f"{s['id']}: expected total_supply_held={s['s0']}, got {row['total_supply_held']}")
+        # supply_pressure = -gamma * (total_supply_held - s0) / nominal_supply == 0
+        assert row["total_supply_held"] - row["s0"] == 0
+
+
 def test_add_news_round_trips_columns():
     conn = db.connect(":memory:"); db.init_schema(conn)
     repo.add_news(conn, "Big news", "event", 1234.5)

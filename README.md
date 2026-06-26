@@ -14,6 +14,19 @@ Notes:
 - The market is **frozen** and trading is **blocked** until you explicitly start the event: log in to the Teller Panel and hit **Start event**. `at_min`/elapsed for scheduled events are measured from that moment.
 - Re-test from scratch: `python scripts/setup_db.py --reset` (drops all data; the clock is unset again until the next Start).
 
+## Local Docker test (no domain)
+Caddy auto-HTTPS needs a real public domain, so for local testing serve plain HTTP instead (the session cookie is not `secure`, so HTTP is fine for testing — never for the real event).
+
+1. `.env` — set `DOMAIN` to an HTTP address so Caddy skips TLS:
+   - `DOMAIN=:80` → serves HTTP on all interfaces; reach it from other LAN devices at `http://<machine-ip>/`.
+   - `DOMAIN=http://localhost` → localhost only.
+   Plus `STAFF_PASSWORD` and a random `SECRET_KEY` (`python -c "import secrets; print(secrets.token_urlsafe(32))"`).
+2. Provision the DB (writes to the mounted `./data` volume): `docker compose run --rm app python scripts/setup_db.py --reset --force`.
+3. `docker compose build && docker compose up`.
+4. Open `http://localhost/member.html` (or `http://<machine-ip>/…`). Staff-login on `/teller.html` and click **Start event** to unfreeze the market.
+
+Do NOT put a bare IP in `DOMAIN` expecting HTTPS — Caddy can't issue a public cert for an IP. Use `DOMAIN=:80` and HTTP.
+
 ## Deploy (VM)
 1. Generate PINs once: `python scripts/gen_pins.py` → `config/pins.csv` (keep private).
 2. Copy repo + `config/pins.csv` to the VM.

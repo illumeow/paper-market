@@ -95,3 +95,22 @@ def test_root_redirects_to_dashboard(client):
     r = client.get("/", follow_redirects=False)
     assert r.status_code in (302, 307)
     assert r.headers["location"] == "/dashboard.html"
+
+
+def test_dashboard_exposes_event_start(client):
+    # Before start: event_start key present with null value
+    dash = client.get("/api/dashboard").json()
+    assert "event_start" in dash
+    assert dash["event_start"] is None
+
+    # Staff login and start the event
+    _staff(client)
+    r = client.post("/api/teller/start")
+    assert r.status_code == 200
+    since = r.json()["since"]
+
+    # After start: event_start is a number close to `since`
+    dash = client.get("/api/dashboard").json()
+    assert dash["event_start"] is not None
+    assert isinstance(dash["event_start"], float)
+    assert abs(dash["event_start"] - since) < 1.0

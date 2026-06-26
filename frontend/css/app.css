@@ -87,6 +87,7 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
   cursor: pointer;
   transition: opacity .15s, transform .1s;
   user-select: none;
+  text-decoration: none;
 }
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }

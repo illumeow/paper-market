@@ -16,8 +16,13 @@ function ts2time(ts) {
   const d = new Date(ts * 1000);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
+function ts2min(ts) {
+  if (eventStart == null) return "0";
+  return ((ts - eventStart) / 60).toFixed(1);
+}
 
 // ── State ────────────────────────────────────────────────
+let eventStart = null;
 const charts = {}; // stock_id -> Chart instance
 const summaryCards = {}; // stock_id -> { priceEl, pctEl }
 
@@ -54,7 +59,7 @@ function renderCharts(stocks) {
       <canvas id="chart-${s.stock_id}" height="180"></canvas>`;
     chartsGrid.appendChild(card);
 
-    const labels = s.history.map(h => ts2time(h.ts));
+    const labels = s.history.map(h => ts2min(h.ts));
     const data   = s.history.map(h => h.price);
 
     const ctx = document.getElementById(`chart-${s.stock_id}`).getContext("2d");
@@ -68,8 +73,8 @@ function renderCharts(stocks) {
           borderColor: "#6c8cff",
           backgroundColor: "rgba(108,140,255,.12)",
           borderWidth: 2,
-          pointRadius: data.length < 50 ? 3 : 0,
-          pointHoverRadius: 4,
+          pointRadius: 0,
+          pointHoverRadius: 0,
           fill: true,
           tension: 0.3,
         }],
@@ -87,6 +92,7 @@ function renderCharts(stocks) {
         },
         scales: {
           x: {
+            title: { display: true, text: "min since kickoff", color: "#8892a4" },
             ticks: { color: "#8892a4", maxTicksLimit: 6, maxRotation: 0 },
             grid:  { color: "#2e3350" },
           },
@@ -110,7 +116,7 @@ function renderNews(newsItems) {
   newsFeed.innerHTML = newsItems.slice(0, 10).map(n => `
     <div class="news-item">
       <div>${escapeHtml(n.text)}</div>
-      <div class="news-meta">${n.source || "system"} · ${ts2time(n.ts)}</div>
+      <div class="news-meta">${ts2time(n.ts)}</div>
     </div>`
   ).join("");
 }
@@ -119,7 +125,7 @@ function prependNews(n) {
   const div = document.createElement("div");
   div.className = "news-item";
   div.innerHTML = `<div>${escapeHtml(n.text)}</div>
-    <div class="news-meta">${n.source || "system"} · ${ts2time(Date.now() / 1000)}</div>`;
+    <div class="news-meta">${ts2time(Date.now() / 1000)}</div>`;
   newsFeed.insertBefore(div, newsFeed.firstChild);
   // Keep max 15
   while (newsFeed.children.length > 15) newsFeed.removeChild(newsFeed.lastChild);
@@ -131,7 +137,7 @@ function escapeHtml(s) {
 
 // ── Live price update ─────────────────────────────────────
 function onPrices(updates) {
-  const now = ts2time(Date.now() / 1000);
+  const nowMin = ts2min(Date.now() / 1000);
   for (const u of updates) {
     // Update summary card
     const card = summaryCards[u.stock_id];
@@ -140,7 +146,7 @@ function onPrices(updates) {
     // Append to chart
     const chart = charts[u.stock_id];
     if (chart) {
-      chart.data.labels.push(now);
+      chart.data.labels.push(nowMin);
       chart.data.datasets[0].data.push(u.price);
       // Keep last 200 points
       if (chart.data.labels.length > 200) {
@@ -181,6 +187,7 @@ function updateEventStatus(started, elapsed_min) {
 async function pollDashboard() {
   try {
     const data = await api("/api/dashboard");
+    eventStart = data.event_start;
     updateEventStatus(data.started, data.elapsed_min);
     // Optionally refresh summary and news too
     if (data.stocks && data.stocks.length > 0) renderSummary(data.stocks);
@@ -192,6 +199,7 @@ async function pollDashboard() {
 async function load() {
   try {
     const data = await api("/api/dashboard");
+    eventStart = data.event_start;
     updateEventStatus(data.started, data.elapsed_min);
     renderSummary(data.stocks);
     renderCharts(data.stocks);

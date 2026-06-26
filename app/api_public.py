@@ -21,4 +21,5 @@ async def dashboard(request: Request):
     news = [dict(n) for n in repo.current_news(conn, limit=10)]
     return {"stocks": stocks, "news": news,
             "started": event_start(conn) is not None,
-            "elapsed_min": elapsed_min(conn)}
+            "elapsed_min": elapsed_min(conn),
+            "event_start": event_start(conn)}

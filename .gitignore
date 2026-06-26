@@ -5,6 +5,7 @@ config/pins.csv
 # brainstorming / design docs (local only)
 docs/superpowers/
 CLAUDE.md
+GLOSSARY.md
 
 # graphify knowledge-graph output (local only; derived from gitignored docs)
 graphify-out/

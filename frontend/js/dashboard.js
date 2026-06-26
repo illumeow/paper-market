@@ -12,13 +12,9 @@ function toast(msg, type = "ok") {
 
 // ── Formatting ───────────────────────────────────────────
 function fmt(n) { return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function ts2time(ts) {
-  const d = new Date(ts * 1000);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-}
-function ts2min(ts) {
-  if (eventStart == null) return "0";
-  return ((ts - eventStart) / 60).toFixed(1);
+function minSinceKickoff(ts) {
+  if (eventStart == null) return 0;
+  return (ts - eventStart) / 60;
 }
 
 // ── State ────────────────────────────────────────────────
@@ -59,17 +55,15 @@ function renderCharts(stocks) {
       <canvas id="chart-${s.stock_id}" height="180"></canvas>`;
     chartsGrid.appendChild(card);
 
-    const labels = s.history.map(h => ts2min(h.ts));
-    const data   = s.history.map(h => h.price);
+    const points = s.history.map(h => ({ x: minSinceKickoff(h.ts), y: h.price }));
 
     const ctx = document.getElementById(`chart-${s.stock_id}`).getContext("2d");
     charts[s.stock_id] = new Chart(ctx, {
       type: "line",
       data: {
-        labels,
         datasets: [{
           label: s.name,
-          data,
+          data: points,
           borderColor: "#6c8cff",
           backgroundColor: "rgba(108,140,255,.12)",
           borderWidth: 2,
@@ -92,12 +86,13 @@ function renderCharts(stocks) {
         },
         scales: {
           x: {
-            title: { display: true, text: "min since kickoff", color: "#8892a4" },
-            ticks: { color: "#8892a4", maxTicksLimit: 6, maxRotation: 0 },
+            type: "linear",
+            title: { display: true, text: "(min)", align: "end", color: "#8892a4" },
+            ticks: { color: "#8892a4", precision: 0, maxTicksLimit: 8, maxRotation: 0 },
             grid:  { color: "#2e3350" },
           },
           y: {
-            ticks: { color: "#8892a4", callback: v => "$" + fmt(v) },
+            ticks: { color: "#8892a4", callback: v => fmt(v) },
             grid:  { color: "#2e3350" },
           },
         },
@@ -116,7 +111,7 @@ function renderNews(newsItems) {
   newsFeed.innerHTML = newsItems.slice(0, 10).map(n => `
     <div class="news-item">
       <div>${escapeHtml(n.text)}</div>
-      <div class="news-meta">${ts2time(n.ts)}</div>
+      <div class="news-meta">${minSinceKickoff(n.ts).toFixed(1)} min</div>
     </div>`
   ).join("");
 }
@@ -125,7 +120,7 @@ function prependNews(n) {
   const div = document.createElement("div");
   div.className = "news-item";
   div.innerHTML = `<div>${escapeHtml(n.text)}</div>
-    <div class="news-meta">${ts2time(Date.now() / 1000)}</div>`;
+    <div class="news-meta">${minSinceKickoff(Date.now() / 1000).toFixed(1)} min</div>`;
   newsFeed.insertBefore(div, newsFeed.firstChild);
   // Keep max 15
   while (newsFeed.children.length > 15) newsFeed.removeChild(newsFeed.lastChild);
@@ -137,7 +132,7 @@ function escapeHtml(s) {
 
 // ── Live price update ─────────────────────────────────────
 function onPrices(updates) {
-  const nowMin = ts2min(Date.now() / 1000);
+  const nowMin = minSinceKickoff(Date.now() / 1000);
   for (const u of updates) {
     // Update summary card
     const card = summaryCards[u.stock_id];
@@ -146,13 +141,10 @@ function onPrices(updates) {
     // Append to chart
     const chart = charts[u.stock_id];
     if (chart) {
-      chart.data.labels.push(nowMin);
-      chart.data.datasets[0].data.push(u.price);
+      const ds = chart.data.datasets[0].data;
+      ds.push({ x: nowMin, y: u.price });
       // Keep last 200 points
-      if (chart.data.labels.length > 200) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-      }
+      if (ds.length > 200) ds.shift();
       chart.update("none");
     }
   }

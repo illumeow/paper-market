@@ -17,7 +17,7 @@ def test_due_event_fires_and_publishes_news():
     conn = db.connect(":memory:"); db.init_schema(conn)
     cfg = load_config(); repo.seed(conn, cfg, pins_path="config/pins.csv", now=0.0)
     # advance to 40 min (example event at 35)
-    events.tick_prices(conn, now=40 * 60, tuning=cfg.tuning, sigma=0.0,
+    events.tick_prices(conn, now=40 * 60, tuning=cfg.tuning, noise_scale=0.0,
                        quarter_min=30, tick_min=5/60, rng=__import__("random"))
     assert conn.execute("SELECT COUNT(*) c FROM events WHERE fired=1").fetchone()["c"] >= 1
     assert conn.execute("SELECT COUNT(*) c FROM news WHERE source='event'").fetchone()["c"] >= 1
@@ -28,8 +28,8 @@ def test_quarter_rollover_resets_band():
     cfg = load_config(); repo.seed(conn, cfg, pins_path="config/pins.csv", now=0.0)
     # simulate a band that got ratcheted during quarter 0
     repo.update_stock(conn, "TECH", band_floor_pct=-0.9, band_ceiling_pct=0.9)
-    # tick after crossing into quarter 1 (>= 30 min). sigma=0 so no noise, no organic ratchet.
-    events.tick_prices(conn, now=31*60, tuning=cfg.tuning, sigma=0.0,
+    # tick after crossing into quarter 1 (>= 30 min). noise_scale=0 so no noise, no organic ratchet.
+    events.tick_prices(conn, now=31*60, tuning=cfg.tuning, noise_scale=0.0,
                        quarter_min=cfg.quarter_min, tick_min=5/60, rng=__import__("random"))
     s = repo.get_stock(conn, "TECH")
     assert s["band_floor_pct"] == -0.30 and s["band_ceiling_pct"] == 0.30

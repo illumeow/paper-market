@@ -17,7 +17,7 @@ async def run_ticker(app):
             continue   # event not started: market frozen, no price evolution
         async with MUTATION_LOCK:
             updated = events.tick_prices(app.state.conn, now, tuning=cfg.tuning,
-                                         sigma=cfg.tuning.sigma, quarter_min=cfg.quarter_min,
+                                         noise_scale=cfg.tuning.noise_scale, quarter_min=cfg.quarter_min,
                                          tick_min=tick_min, rng=random)
             # publish each news row exactly once, in order, via a server-global cursor
             fresh = [dict(r) for r in repo.news_after(app.state.conn, app.state.last_news_id)]

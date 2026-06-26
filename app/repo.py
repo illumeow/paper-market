@@ -21,11 +21,13 @@ def provision(conn, config, pins_path="config/pins.csv", now=None):
         for s in config.stocks:
             conn.execute(
                 "INSERT INTO stocks(stock_id,name,price,quarter_open_price,band_floor_pct,"
-                "band_ceiling_pct,floor,ceiling,nominal_supply,s0,init_price,total_supply_held) "
+                "band_ceiling_pct,floor,ceiling,pressure_normalizer,market_share_baseline,"
+                "init_price,total_market_shares) "
                 "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                 (s["id"], s["name"], float(s["init_price"]), float(s["init_price"]),
                  -0.30, 0.30, float(s["floor"]), float(s["ceiling"]),
-                 s["nominal_supply"], s["s0"], float(s["init_price"]), s["s0"]))
+                 s["pressure_normalizer"], s["market_share_baseline"],
+                 float(s["init_price"]), s["market_share_baseline"]))
     if conn.execute("SELECT COUNT(*) c FROM events").fetchone()["c"] == 0:
         for e in config.events:
             conn.execute("INSERT INTO events(at_min,stock_id,pct,duration_min,headline) "

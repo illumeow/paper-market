@@ -15,12 +15,12 @@ def test_buy_deducts_cost_and_adds_shares():
     p0 = repo.get_stock(conn, "TECH")["price"]
     bal0 = repo.get_member(conn, "0-1")["balance"]
     services.execute_trade(conn, "0-1", "TECH", "buy", 5, now=0.0, actor="member",
-                           tuning=cfg.tuning, sigma=0.0)
+                           tuning=cfg.tuning, noise_scale=0.0)
     assert repo.get_holding(conn, "0-1", "TECH") == 5
     assert repo.get_member(conn, "0-1")["balance"] == bal0 - int(round(p0 * 5))
-    # total_supply_held is provisioned to s0 (equilibrium anchor); a buy of 5 adds to it
-    s0 = repo.get_stock(conn, "TECH")["s0"]
-    assert repo.get_stock(conn, "TECH")["total_supply_held"] == s0 + 5
+    # total_market_shares is provisioned to market_share_baseline (equilibrium anchor); a buy of 5 adds to it
+    baseline = repo.get_stock(conn, "TECH")["market_share_baseline"]
+    assert repo.get_stock(conn, "TECH")["total_market_shares"] == baseline + 5
 
 
 def test_buy_insufficient_cash_blocked():
@@ -28,7 +28,7 @@ def test_buy_insufficient_cash_blocked():
     import pytest
     with pytest.raises(ValueError):
         services.execute_trade(conn, "0-1", "TECH", "buy", 100000, now=0.0,
-                               actor="member", tuning=cfg.tuning, sigma=0.0)
+                               actor="member", tuning=cfg.tuning, noise_scale=0.0)
 
 
 def test_sell_requires_shares():
@@ -36,4 +36,4 @@ def test_sell_requires_shares():
     import pytest
     with pytest.raises(ValueError):
         services.execute_trade(conn, "0-1", "TECH", "sell", 1, now=0.0,
-                               actor="member", tuning=cfg.tuning, sigma=0.0)
+                               actor="member", tuning=cfg.tuning, noise_scale=0.0)

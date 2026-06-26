@@ -22,8 +22,9 @@ def load_config(path="config/config.toml") -> Config:
     with open(path, "rb") as f:
         raw = tomllib.load(f)
     t = raw["tuning"]
-    tuning = Tuning(beta=t["beta"], depth=t["depth"], mu=t["mu"],
-                    net_flow_decay=t["net_flow_decay"], gamma=t["gamma"], sigma=t["sigma"])
+    tuning = Tuning(impact_strength=t["impact_strength"], impact_depth=t["impact_depth"],
+                    momentum_strength=t["momentum_strength"], momentum_decay=t["momentum_decay"],
+                    reversion_strength=t["reversion_strength"], noise_scale=t["noise_scale"])
     staff_password = os.environ.get("STAFF_PASSWORD") or ""
     secret_key = os.environ.get("SECRET_KEY") or ""
     if not staff_password:

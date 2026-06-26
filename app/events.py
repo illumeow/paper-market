@@ -14,7 +14,7 @@ def event_drift_for(stock_id, active_events, tick_min):
     return drift, dom_pct
 
 
-def tick_prices(conn, now, *, tuning, sigma, quarter_min, tick_min, rng):
+def tick_prices(conn, now, *, tuning, noise_scale, quarter_min, tick_min, rng):
     elapsed = elapsed_min(conn, now)
 
     # Fire due events
@@ -45,15 +45,16 @@ def tick_prices(conn, now, *, tuning, sigma, quarter_min, tick_min, rng):
     for s in repo.all_stocks(conn):
         s = dict(s)
         drift, dom_pct = event_drift_for(s["stock_id"], active, tick_min)
-        noise = rng.uniform(-sigma, sigma)
+        noise = rng.uniform(-noise_scale, noise_scale)
         r = next_price(price=s["price"], quarter_open=s["quarter_open_price"],
                        band_floor_pct=s["band_floor_pct"], band_ceiling_pct=s["band_ceiling_pct"],
-                       net_flow=s["net_flow"], total_supply_held=s["total_supply_held"],
-                       s0=s["s0"], nominal_supply=s["nominal_supply"], floor=s["floor"],
-                       ceiling=s["ceiling"], signed_shares=0, event_drift=drift,
+                       flow_momentum=s["flow_momentum"], total_market_shares=s["total_market_shares"],
+                       market_share_baseline=s["market_share_baseline"],
+                       pressure_normalizer=s["pressure_normalizer"], floor=s["floor"],
+                       ceiling=s["ceiling"], trade_shares=0, event_drift=drift,
                        event_pct=dom_pct, tuning=tuning, noise=noise)
         repo.update_stock(conn, s["stock_id"], price=r.price, band_floor_pct=r.band_floor_pct,
-                          band_ceiling_pct=r.band_ceiling_pct, net_flow=r.net_flow)
+                          band_ceiling_pct=r.band_ceiling_pct, flow_momentum=r.flow_momentum)
         conn.execute("INSERT INTO price_history(stock_id,ts,price) VALUES(?,?,?)",
                      (s["stock_id"], now, r.price))
         updated.append({"stock_id": s["stock_id"], "price": r.price})

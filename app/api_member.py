@@ -53,7 +53,7 @@ async def trade(request: Request, mid: str = Depends(require_member)):
     async with MUTATION_LOCK:
         res = services.execute_trade(request.app.state.conn, mid, body["stock_id"],
                                      body["side"], int(body["shares"]), time.time(), "member",
-                                     tuning=cfg.tuning, sigma=cfg.tuning.sigma)
+                                     tuning=cfg.tuning, noise_scale=cfg.tuning.noise_scale)
     await request.app.state.broadcaster.publish({"type": "prices", "data": [
         {"stock_id": body["stock_id"], "price": res["price"]}]})
     return res

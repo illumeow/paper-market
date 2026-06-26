@@ -3,12 +3,12 @@ from dataclasses import dataclass
 
 @dataclass
 class Tuning:
-    beta: float
-    depth: float
-    mu: float
-    net_flow_decay: float
-    gamma: float
-    sigma: float
+    impact_strength: float
+    impact_depth: float
+    momentum_strength: float
+    momentum_decay: float
+    reversion_strength: float
+    noise_scale: float
 
 
 @dataclass
@@ -16,17 +16,18 @@ class PriceResult:
     price: float
     band_floor_pct: float
     band_ceiling_pct: float
-    net_flow: float
+    flow_momentum: float
 
 
 def next_price(*, price, quarter_open, band_floor_pct, band_ceiling_pct,
-               net_flow, total_supply_held, s0, nominal_supply, floor, ceiling,
-               signed_shares, event_drift, event_pct, tuning, noise) -> PriceResult:
-    net_flow = net_flow * tuning.net_flow_decay + signed_shares
+               flow_momentum, total_market_shares, market_share_baseline,
+               pressure_normalizer, floor, ceiling,
+               trade_shares, event_drift, event_pct, tuning, noise) -> PriceResult:
+    flow_momentum = flow_momentum * tuning.momentum_decay + trade_shares
 
-    impact = tuning.beta * signed_shares / tuning.depth
-    momentum = tuning.mu * net_flow
-    supply_pressure = -tuning.gamma * (total_supply_held - s0) / nominal_supply
+    impact = tuning.impact_strength * trade_shares / tuning.impact_depth
+    momentum = tuning.momentum_strength * flow_momentum
+    supply_pressure = -tuning.reversion_strength * (total_market_shares - market_share_baseline) / pressure_normalizer
 
     # 1) organic move (no event), clamped to current quarter band
     organic = price * (1 + impact + momentum + supply_pressure + noise)
@@ -49,4 +50,4 @@ def next_price(*, price, quarter_open, band_floor_pct, band_ceiling_pct,
     final = max(floor, min(ceiling, final))
 
     return PriceResult(price=final, band_floor_pct=band_floor_pct,
-                       band_ceiling_pct=band_ceiling_pct, net_flow=net_flow)
+                       band_ceiling_pct=band_ceiling_pct, flow_momentum=flow_momentum)

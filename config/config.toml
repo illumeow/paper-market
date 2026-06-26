@@ -62,8 +62,14 @@ market_share_baseline = 3000
 
 # Example event (edit/extend for the real schedule):
 [[events]]
-at_min = 35
+at_min = 5
 stock_id = "ENGY"
 pct = 0.10
 duration_min = 5
 headline = "Energy demand spikes — EnergyX surges"
+[[events]]
+at_min = 15
+stock_id = "TECH"
+pct = -0.15
+duration_min = 5
+headline = "TechCo data breach — shares slide"

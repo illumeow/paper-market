@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
-from app import repo
-from app.clock import event_start, elapsed_min, _TIME_SCALE
+from app.stock import repo as stock_repo
+from app.core.clock import event_start, elapsed_min, _TIME_SCALE
 
 router = APIRouter()
 
@@ -9,7 +9,7 @@ router = APIRouter()
 async def dashboard(request: Request):
     conn = request.app.state.conn
     stocks = []
-    for s in repo.all_stocks(conn):
+    for s in stock_repo.all_stocks(conn):
         hist = conn.execute("SELECT ts,price FROM price_history WHERE stock_id=? ORDER BY ts",
                             (s["stock_id"],)).fetchall()
         vol = conn.execute("SELECT COALESCE(SUM(shares),0) v FROM trades WHERE stock_id=?",
@@ -18,7 +18,7 @@ async def dashboard(request: Request):
         stocks.append({"stock_id": s["stock_id"], "name": s["name"], "price": s["price"],
                        "pct_change": round(pct, 2), "volume": vol,
                        "history": [{"ts": h["ts"], "price": h["price"]} for h in hist]})
-    news = [dict(n) for n in repo.current_news(conn, limit=10)]
+    news = [dict(n) for n in stock_repo.current_news(conn, limit=10)]
     return {"stocks": stocks, "news": news,
             "started": event_start(conn) is not None,
             "elapsed_min": elapsed_min(conn),

@@ -10,11 +10,11 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("STAFF_PASSWORD", "staffpw")
     monkeypatch.setenv("SECRET_KEY", "k")
     # provision the temp DB (boot no longer seeds)
-    import app.db as _db
-    from app.config import load_config
-    from app import repo
+    from app.core import db as _db
+    from app.core.config import load_config
+    from app.core import provision
     c = _db.connect(db_path); _db.init_schema(c)
-    repo.provision(c, load_config(), pins_path="config/pins.csv")
+    provision.provision(c, load_config(), pins_path="config/pins.csv")
     c.close()
     from app.main import create_app
     return TestClient(create_app())
@@ -82,7 +82,7 @@ def test_business_error_returns_400_with_message(client):
 
 
 def test_teller_trade_blocked_before_start(client):
-    from app.clock import set_event_start
+    from app.core.clock import set_event_start
     _staff(client)
     r = client.post("/api/teller/trade", json={"id": "0-1", "stock_id": "TECH", "side": "buy", "shares": 1})
     assert r.status_code == 409

@@ -4,15 +4,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from app.config import load_config
-from app.errors import BusinessError
-from app import db, repo
-from app.realtime import Broadcaster
-from app.auth import RateLimiter
-from app.ticker import run_ticker
-from app.api_member import router as member_router
-from app.api_teller import router as teller_router
-from app.api_public import router as public_router
+from app.core.config import load_config
+from app.core.errors import BusinessError
+from app.core import db
+from app.stock import repo as stock_repo
+from app.core.realtime import Broadcaster
+from app.core.auth import RateLimiter
+from app.stock.ticker import run_ticker
+from app.api.member import router as member_router
+from app.api.teller import router as teller_router
+from app.api.public import router as public_router
 
 
 def create_app():
@@ -46,11 +47,10 @@ def create_app():
     app.state.config = cfg
     app.state.conn = conn
     app.state.db_path = db_path
-    app.state.repo = repo
     app.state.broadcaster = Broadcaster()
     app.state.rate_limiter = RateLimiter(max_per_min=5)
     # ticker broadcasts news rows newer than this cursor (so pre-existing rows aren't re-blasted)
-    app.state.last_news_id = repo.latest_news_id(conn)
+    app.state.last_news_id = stock_repo.latest_news_id(conn)
     app.include_router(member_router)
     app.include_router(teller_router)
     app.include_router(public_router)

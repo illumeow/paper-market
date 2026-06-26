@@ -1,6 +1,6 @@
-from app import repo
-from app.clock import elapsed_min, quarter_index
-from app.domain.price_engine import next_price
+from app.stock import repo
+from app.core.clock import elapsed_min, quarter_index
+from app.stock.engine import next_price
 
 
 def event_drift_for(stock_id, active_events, tick_min):

@@ -7,10 +7,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import setup_db
-import app.db as db
-from app.config import load_config
-from app import repo
-from app.clock import event_start, set_event_start
+from app.core import db
+from app.core.config import load_config
+from app.core import provision
+from app.core.clock import event_start, set_event_start
 
 
 def test_setup_provisions_without_clock(tmp_path):

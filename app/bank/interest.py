@@ -1,5 +1,5 @@
 from decimal import Decimal
-from app.money import compound
+from app.core.money import compound
 
 
 def demand_balance(principal, minutes, demand_rate=0.005) -> Decimal:

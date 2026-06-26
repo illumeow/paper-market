@@ -1,4 +1,4 @@
-from app.domain.cooldown import visit_status
+from app.core.cooldown import visit_status
 
 
 def test_no_prior_visit_unlocked():

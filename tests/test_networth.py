@@ -1,4 +1,4 @@
-from app.domain.networth import member_amount
+from app.core.networth import member_amount
 
 
 def test_amount_combines_all_parts():

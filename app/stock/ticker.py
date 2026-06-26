@@ -1,8 +1,9 @@
 import asyncio
 import time
-from app.locks import MUTATION_LOCK
-from app import events
-from app.clock import event_start, _TIME_SCALE
+from app.core.locks import MUTATION_LOCK
+from app.stock import events
+from app.stock import repo as stock_repo
+from app.core.clock import event_start, _TIME_SCALE
 
 
 async def run_ticker(app):
@@ -13,7 +14,6 @@ async def run_ticker(app):
     tick_min = cfg.tick_seconds / 60.0
     tick_sleep = cfg.tick_seconds / _TIME_SCALE
     import random
-    repo = app.state.repo
     while True:
         await asyncio.sleep(tick_sleep)
         now = time.time()
@@ -24,7 +24,7 @@ async def run_ticker(app):
                                          noise_scale=cfg.tuning.noise_scale, quarter_min=cfg.quarter_min,
                                          tick_min=tick_min, rng=random)
             # publish each news row exactly once, in order, via a server-global cursor
-            fresh = [dict(r) for r in repo.news_after(app.state.conn, app.state.last_news_id)]
+            fresh = [dict(r) for r in stock_repo.news_after(app.state.conn, app.state.last_news_id)]
             if fresh:
                 app.state.last_news_id = fresh[-1]["id"]
         await app.state.broadcaster.publish({"type": "prices", "data": updated})

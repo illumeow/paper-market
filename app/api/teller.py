@@ -1,13 +1,16 @@
 import time
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse, Response
-from app import repo, services
-from app.auth import make_token, require_staff, COOKIE
-from app.clock import event_start, set_event_start, elapsed_min, accrued_minutes
-from app.domain.cooldown import visit_status
-from app.domain.networth import member_amount
-from app.domain.export_csv import build_csv
-from app.locks import MUTATION_LOCK
+from app.bank import repo as bank_repo
+from app.bank import service as bank_service
+from app.stock import repo as stock_repo
+from app.stock import service as stock_service
+from app.core.auth import make_token, require_staff, COOKIE
+from app.core.clock import event_start, set_event_start, elapsed_min, accrued_minutes
+from app.core.cooldown import visit_status
+from app.core.networth import member_amount
+from app.core.export_csv import build_csv
+from app.core.locks import MUTATION_LOCK
 
 router = APIRouter()
 
@@ -36,7 +39,7 @@ async def t_start(request: Request, _: bool = Depends(require_staff)):
 @router.get("/api/member/{mid}")
 async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
     conn = request.app.state.conn
-    m = repo.get_member(conn, mid)
+    m = bank_repo.get_member(conn, mid)
     if not m:
         raise HTTPException(404, "no such member")
     now = time.time()
@@ -45,12 +48,12 @@ async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
     if locked:
         return {"member_id": mid, "locked": True, "cooldown_remaining_sec": int(remaining)}
     async with MUTATION_LOCK:
-        repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
-        bal = services.accrue_balance(conn, mid, now)
+        bank_repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
+        bal = bank_service.accrue_balance(conn, mid, now)
     return {"member_id": mid, "locked": False, "balance": bal, "debt": m["debt"],
             "relief_claimed": bool(m["relief_claimed"]),
-            "fixed_deposits": [dict(f) for f in repo.open_fds(conn, mid)],
-            "holdings": [dict(h) for h in repo.list_holdings(conn, mid)]}
+            "fixed_deposits": [dict(f) for f in bank_repo.open_fds(conn, mid)],
+            "holdings": [dict(h) for h in stock_repo.list_holdings(conn, mid)]}
 
 
 def _eco(request):
@@ -61,7 +64,7 @@ def _eco(request):
 async def t_deposit(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     async with MUTATION_LOCK:
-        services.deposit(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
+        bank_service.deposit(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
     return {"ok": True}
 
 
@@ -69,7 +72,7 @@ async def t_deposit(request: Request, _: bool = Depends(require_staff)):
 async def t_withdraw(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     async with MUTATION_LOCK:
-        services.withdraw(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
+        bank_service.withdraw(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
     return {"ok": True}
 
 
@@ -77,8 +80,8 @@ async def t_withdraw(request: Request, _: bool = Depends(require_staff)):
 async def t_loan(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     async with MUTATION_LOCK:
-        services.loan_disburse(request.app.state.conn, b["id"], int(b["amount"]), time.time(),
-                               "teller", _eco(request)["loan_cap"])
+        bank_service.loan_disburse(request.app.state.conn, b["id"], int(b["amount"]), time.time(),
+                                   "teller", _eco(request)["loan_cap"])
     return {"ok": True}
 
 
@@ -86,7 +89,7 @@ async def t_loan(request: Request, _: bool = Depends(require_staff)):
 async def t_repay(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     async with MUTATION_LOCK:
-        services.loan_repay(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
+        bank_service.loan_repay(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
     return {"ok": True}
 
 
@@ -94,8 +97,8 @@ async def t_repay(request: Request, _: bool = Depends(require_staff)):
 async def t_relief(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     async with MUTATION_LOCK:
-        services.claim_relief(request.app.state.conn, b["id"], time.time(), "teller",
-                              _eco(request)["relief_amount"])
+        bank_service.claim_relief(request.app.state.conn, b["id"], time.time(), "teller",
+                                  _eco(request)["relief_amount"])
     return {"ok": True}
 
 
@@ -103,10 +106,10 @@ async def t_relief(request: Request, _: bool = Depends(require_staff)):
 async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
     b = await request.json(); eco = _eco(request)
     async with MUTATION_LOCK:
-        fd = services.fd_open(request.app.state.conn, b["id"], int(b["principal"]), int(b["term"]),
-                              time.time(), "teller", demand_rate=eco["demand_rate"],
-                              fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
-                              event_duration_min=eco["event_duration_min"])
+        fd = bank_service.fd_open(request.app.state.conn, b["id"], int(b["principal"]), int(b["term"]),
+                                  time.time(), "teller", demand_rate=eco["demand_rate"],
+                                  fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
+                                  event_duration_min=eco["event_duration_min"])
     return {"fd_id": fd}
 
 
@@ -114,8 +117,8 @@ async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
 async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     async with MUTATION_LOCK:
-        services.fd_close(request.app.state.conn, b["id"], b["fd_id"], time.time(), "teller",
-                          demand_rate=_eco(request)["demand_rate"])
+        bank_service.fd_close(request.app.state.conn, b["id"], b["fd_id"], time.time(), "teller",
+                              demand_rate=_eco(request)["demand_rate"])
     return {"ok": True}
 
 
@@ -125,9 +128,9 @@ async def t_trade(request: Request, _: bool = Depends(require_staff)):
         raise HTTPException(409, "event not started")
     b = await request.json(); cfg = request.app.state.config
     async with MUTATION_LOCK:
-        res = services.execute_trade(request.app.state.conn, b["id"], b["stock_id"], b["side"],
-                                     int(b["shares"]), time.time(), "teller",
-                                     tuning=cfg.tuning, noise_scale=cfg.tuning.noise_scale)
+        res = stock_service.execute_trade(request.app.state.conn, b["id"], b["stock_id"], b["side"],
+                                          int(b["shares"]), time.time(), "teller",
+                                          tuning=cfg.tuning, noise_scale=cfg.tuning.noise_scale)
     await request.app.state.broadcaster.publish({"type": "prices",
         "data": [{"stock_id": b["stock_id"], "price": res["price"]}]})
     return res
@@ -137,7 +140,7 @@ async def t_trade(request: Request, _: bool = Depends(require_staff)):
 async def t_news(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     # insert only; the ticker broadcasts it once via the last_news_id cursor (<=tick_seconds later)
-    repo.add_news(request.app.state.conn, b["text"], "manual", time.time())
+    stock_repo.add_news(request.app.state.conn, b["text"], "manual", time.time())
     return {"ok": True}
 
 
@@ -145,16 +148,16 @@ async def t_news(request: Request, _: bool = Depends(require_staff)):
 async def export(request: Request, _: bool = Depends(require_staff)):
     conn = request.app.state.conn
     now = time.time()
-    prices = {s["stock_id"]: s["price"] for s in repo.all_stocks(conn)}
+    prices = {s["stock_id"]: s["price"] for s in stock_repo.all_stocks(conn)}
     amounts = {}
     for g in range(10):
         for i in range(1, 13):
             mid = f"{g}-{i}"
-            m = repo.get_member(conn, mid)
-            bal = services.accrue_balance(conn, mid, now)
+            m = bank_repo.get_member(conn, mid)
+            bal = bank_service.accrue_balance(conn, mid, now)
             fds = [{"principal": f["principal"], "term_minutes": f["term_minutes"],
-                    "rate_per_min": f["rate_per_min"]} for f in repo.open_fds(conn, mid)]
-            holds = [{"stock_id": h["stock_id"], "shares": h["shares"]} for h in repo.list_holdings(conn, mid)]
+                    "rate_per_min": f["rate_per_min"]} for f in bank_repo.open_fds(conn, mid)]
+            holds = [{"stock_id": h["stock_id"], "shares": h["shares"]} for h in stock_repo.list_holdings(conn, mid)]
             le = accrued_minutes(conn, m["loan_taken_at"], now)
             amounts[mid] = member_amount(balance=bal, open_fds=fds, holdings=holds,
                                          prices=prices, debt=m["debt"], loan_elapsed_min=le)

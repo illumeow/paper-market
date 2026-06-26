@@ -14,8 +14,8 @@ from pathlib import Path
 # Add parent dir to path so we can import app
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app import db, repo
-from app.config import load_config
+from app.core import db, provision
+from app.core.config import load_config
 
 
 def main(argv=None) -> int:
@@ -94,7 +94,7 @@ def main(argv=None) -> int:
     db.init_schema(conn)
 
     # Provision (without clock)
-    repo.provision(conn, cfg, pins_path=args.pins)
+    provision.provision(conn, cfg, pins_path=args.pins)
 
     # Print summary
     member_count = conn.execute("SELECT COUNT(*) c FROM members").fetchone()["c"]

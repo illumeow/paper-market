@@ -1,6 +1,6 @@
-import app.db as db
-import app.clock as clock_mod
-from app.clock import set_event_start, elapsed_min, accrued_minutes
+import app.core.db as db
+import app.core.clock as clock_mod
+from app.core.clock import set_event_start, elapsed_min, accrued_minutes
 
 
 def _fresh_conn():
@@ -55,7 +55,7 @@ def test_accrued_minutes_no_event_start_returns_zero():
 # ---------------------------------------------------------------------------
 
 def test_elapsed_min_with_scale_10(monkeypatch):
-    monkeypatch.setattr("app.clock._TIME_SCALE", 10.0)
+    monkeypatch.setattr("app.core.clock._TIME_SCALE", 10.0)
     conn = _fresh_conn()
     start = 1_000_000.0
     set_event_start(conn, start)
@@ -64,7 +64,7 @@ def test_elapsed_min_with_scale_10(monkeypatch):
 
 
 def test_accrued_minutes_with_scale_10(monkeypatch):
-    monkeypatch.setattr("app.clock._TIME_SCALE", 10.0)
+    monkeypatch.setattr("app.core.clock._TIME_SCALE", 10.0)
     conn = _fresh_conn()
     start = 1_000_000.0
     set_event_start(conn, start)

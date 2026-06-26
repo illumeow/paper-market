@@ -1,7 +1,7 @@
 # Price Model
 
-How a stock's price evolves each tick. Code lives in `app/domain/price_engine.py`
-(`next_price`, pure function) and `app/events.py` (`tick_prices` / `event_drift_for`,
+How a stock's price evolves each tick. Code lives in `app/stock/engine.py`
+(`next_price`, pure function) and `app/stock/events.py` (`tick_prices` / `event_drift_for`,
 the per-tick driver). Knobs live in `config/config.toml` (`[tuning]` global,
 `[[stocks]]` per stock). All money is integer units; prices are floats internally,
 rounded on display.

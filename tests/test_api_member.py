@@ -9,11 +9,11 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("STAFF_PASSWORD", "staffpw")
     monkeypatch.setenv("SECRET_KEY", "k")
     # provision the temp DB (boot no longer seeds)
-    import app.db as _db
-    from app.config import load_config
-    from app import repo
+    import app.core.db as _db
+    from app.core.config import load_config
+    from app.core import provision
     c = _db.connect(db_path); _db.init_schema(c)
-    repo.provision(c, load_config(), pins_path="config/pins.csv")
+    provision.provision(c, load_config(), pins_path="config/pins.csv")
     c.close()
     from app.main import create_app
     return TestClient(create_app())
@@ -44,7 +44,7 @@ def test_member_cannot_access_teller(client):
 
 
 def test_trade_blocked_before_start_then_allowed(client):
-    from app.clock import set_event_start
+    from app.core.clock import set_event_start
     _login_member(client, None)
     assert client.get("/api/dashboard").json()["started"] is False
     r = client.post("/api/trade", json={"stock_id": "TECH", "side": "buy", "shares": 1})

@@ -2,7 +2,7 @@ import logging
 import os
 import tomllib
 from dataclasses import dataclass, field
-from app.domain.price_engine import Tuning
+from app.stock.engine import Tuning
 
 
 @dataclass

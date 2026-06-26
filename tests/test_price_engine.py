@@ -1,4 +1,4 @@
-from app.domain.price_engine import next_price, Tuning
+from app.stock.engine import next_price, Tuning
 
 T = Tuning(impact_strength=0.5, impact_depth=500, momentum_strength=0.0, momentum_decay=1.0, reversion_strength=0.0, noise_scale=0.0)
 

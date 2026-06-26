@@ -1,6 +1,6 @@
 from decimal import Decimal
-from app.money import compound
-from app.domain import interest
+from app.core.money import compound
+from app.bank import interest
 
 
 def test_compound_basic():

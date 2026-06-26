@@ -1,4 +1,4 @@
-from app.auth import pin_hash, make_token, read_token, RateLimiter
+from app.core.auth import pin_hash, make_token, read_token, RateLimiter
 
 
 def test_token_roundtrip():

@@ -1,4 +1,4 @@
-from app.domain.export_csv import build_csv
+from app.core.export_csv import build_csv
 
 
 def test_layout_columns_rows_and_sum():

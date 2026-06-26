@@ -1,5 +1,5 @@
 from decimal import Decimal, ROUND_HALF_UP
-from app.domain.interest import fd_maturity, loan_owed
+from app.bank.interest import fd_maturity, loan_owed
 
 
 def member_amount(*, balance, open_fds, holdings, prices, debt, loan_elapsed_min) -> int:

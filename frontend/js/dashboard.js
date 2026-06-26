@@ -1,4 +1,4 @@
-import { api, stream } from "/js/common.js";
+import { api, stream, money as fmt } from "/js/common.js";
 
 // ── Toast ────────────────────────────────────────────────
 const toastEl = document.getElementById("toast");
@@ -11,7 +11,6 @@ function toast(msg, type = "ok") {
 }
 
 // ── Formatting ───────────────────────────────────────────
-function fmt(n) { return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function minSinceKickoff(ts) {
   if (eventStart == null) return 0;
   return (ts - eventStart) / 60 * timeScale;   // event-minutes (backend TIME_SCALE)

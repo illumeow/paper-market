@@ -3,13 +3,12 @@ from app.bank import repo
 from app.core.clock import elapsed_min, accrued_minutes
 from app.core.errors import BusinessError
 from app.bank.interest import demand_balance, loan_owed, fd_maturity, fd_early_exit
-from app.core.money import _int
 
 
-def accrue_balance(conn, mid, now) -> int:
+def accrue_balance(conn, mid, now) -> float:
     m = repo.get_member(conn, mid)
     minutes = accrued_minutes(conn, m["balance_accrued_at"], now)
-    new_bal = _int(demand_balance(m["balance"], minutes))
+    new_bal = float(demand_balance(m["balance"], minutes))
     repo.update_member(conn, mid, balance=new_bal, balance_accrued_at=now)
     return new_bal
 
@@ -59,7 +58,7 @@ def loan_repay(conn, mid, amount, now, actor):
     if m["debt"] <= 0:
         raise BusinessError("no outstanding loan")
     elapsed = accrued_minutes(conn, m["loan_taken_at"], now)
-    owed = _int(loan_owed(m["debt"], elapsed))
+    owed = float(loan_owed(m["debt"], elapsed))
     bal = accrue_balance(conn, mid, now)
     pay = min(amount, owed)
     if pay > bal:
@@ -95,10 +94,10 @@ def fd_close(conn, mid, fd_id, now, actor, *, demand_rate):
         raise BusinessError("invalid fixed deposit")
     elapsed = accrued_minutes(conn, fd["created_at"], now)
     if elapsed >= fd["term_minutes"]:
-        payout = _int(fd_maturity(fd["principal"], fd["term_minutes"], fd["rate_per_min"]))
+        payout = float(fd_maturity(fd["principal"], fd["term_minutes"], fd["rate_per_min"]))
         matured = True
     else:
-        payout = _int(fd_early_exit(fd["principal"], elapsed, demand_rate))
+        payout = float(fd_early_exit(fd["principal"], elapsed, demand_rate))
         matured = False
     bal = accrue_balance(conn, mid, now)
     repo.update_member(conn, mid, balance=bal + payout)

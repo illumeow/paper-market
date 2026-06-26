@@ -3,6 +3,7 @@ import app.core.db as db
 from app.core.config import load_config
 from app.bank import repo as bank_repo
 from app.bank import service as bank_service
+from app.core.money import compound
 
 
 def _setup():
@@ -16,10 +17,11 @@ def _setup():
 
 def test_accrual_then_deposit():
     conn, _ = _setup()
-    bank_service.accrue_balance(conn, "0-1", now=600.0)   # 10 min -> 1000*1.005^10≈1051
+    bank_service.accrue_balance(conn, "0-1", now=600.0)   # 10 min -> 1000*1.005^10≈1051.14
     bank_service.deposit(conn, "0-1", 100, now=600.0, actor="teller")
     bal = bank_repo.get_member(conn, "0-1")["balance"]
-    assert bal == 1151
+    # balance is now full-precision float: compound(1000, 0.005, 10) + 100 (no rounding)
+    assert bal == pytest.approx(float(compound(1000, 0.005, 10)) + 100, rel=1e-9)
 
 
 def test_withdraw_blocks_negative():
@@ -38,7 +40,8 @@ def test_accrual_frozen_before_start_and_anchored_to_kickoff():
     assert bank_service.accrue_balance(conn, "0-1", now=600.0) == 1000
     # kickoff at t=600s; at t=1200s only 10 min of *event* time elapsed (not 20)
     set_event_start(conn, 600.0)
-    assert bank_service.accrue_balance(conn, "0-1", now=1200.0) == 1051
+    # 10 event-minutes of interest: compound(1000, 0.005, 10), no rounding
+    assert bank_service.accrue_balance(conn, "0-1", now=1200.0) == pytest.approx(float(compound(1000, 0.005, 10)), rel=1e-9)
 
 
 def test_relief_once_only():

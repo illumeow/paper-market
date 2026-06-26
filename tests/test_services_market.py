@@ -1,3 +1,5 @@
+import pytest
+from decimal import Decimal
 import app.core.db as db
 from app.core.config import load_config
 from app.core import provision
@@ -20,7 +22,8 @@ def test_buy_deducts_cost_and_adds_shares():
     stock_service.execute_trade(conn, "0-1", "TECH", "buy", 5, now=0.0, actor="member",
                                 tuning=cfg.tuning, noise_scale=0.0)
     assert stock_repo.get_holding(conn, "0-1", "TECH") == 5
-    assert bank_repo.get_member(conn, "0-1")["balance"] == bal0 - int(round(p0 * 5))
+    # cost is now full-precision float: Decimal(str(p0)) * 5, no rounding
+    assert bank_repo.get_member(conn, "0-1")["balance"] == pytest.approx(bal0 - float(Decimal(str(p0)) * 5), rel=1e-9)
     # total_market_shares is provisioned to market_share_baseline (equilibrium anchor); a buy of 5 adds to it
     baseline = stock_repo.get_stock(conn, "TECH")["market_share_baseline"]
     assert stock_repo.get_stock(conn, "TECH")["total_market_shares"] == baseline + 5

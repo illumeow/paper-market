@@ -1,4 +1,4 @@
-import { api, stream } from "/js/common.js";
+import { api, stream, money, count } from "/js/common.js";
 
 // ── Toast helper ────────────────────────────────────────
 const toastEl = document.getElementById("toast");
@@ -26,21 +26,20 @@ const fdList       = document.getElementById("fd-list");
 const marketList   = document.getElementById("market-list");
 
 // ── Formatting ──────────────────────────────────────────
-function fmt(n) { return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0 }); }
 function fmtRate(r) { return (r * 100).toFixed(3) + "%/min"; }
 
 // ── Render portfolio ────────────────────────────────────
 function renderPortfolio(me) {
   midLabel.textContent = me.member_id;
-  statBalance.textContent = "$" + fmt(me.balance);
-  statDebt.textContent = me.debt > 0 ? "$" + fmt(me.debt) : "—";
+  statBalance.textContent = "$" + money(me.balance);
+  statDebt.textContent = me.debt > 0 ? "$" + money(me.debt) : "—";
 
   // holdings
   if (me.holdings && me.holdings.length > 0) {
     holdingsList.innerHTML = me.holdings.map(h =>
       `<div class="row row--between" style="padding:4px 0;border-bottom:1px solid var(--border)">
         <span class="stock-name">${h.stock_id}</span>
-        <span>${fmt(h.shares)} shares</span>
+        <span>${count(h.shares)} shares</span>
       </div>`
     ).join("");
   } else {
@@ -53,7 +52,7 @@ function renderPortfolio(me) {
     const rows = me.fixed_deposits.map(f =>
       `<tr>
         <td>${f.fd_id}</td>
-        <td>$${fmt(f.principal)}</td>
+        <td>$${money(f.principal)}</td>
         <td>${f.term_minutes}min</td>
         <td>${fmtRate(f.rate_per_min)}</td>
       </tr>`
@@ -78,7 +77,7 @@ function renderMarket(market) {
     div.innerHTML = `
       <div class="row row--between">
         <span class="stock-name">${s.name} <span class="muted">(${s.stock_id})</span></span>
-        <span class="stock-price" id="price-${s.stock_id}">$${fmt(s.price)}</span>
+        <span class="stock-price" id="price-${s.stock_id}">$${money(s.price)}</span>
       </div>
       <div class="trade-controls">
         <input type="number" min="1" value="1" id="shares-${s.stock_id}" placeholder="qty" />
@@ -100,7 +99,7 @@ function renderMarket(market) {
     btn.disabled = true;
     try {
       const res = await api("/api/trade", "POST", { stock_id: sid, side, shares });
-      toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${fmt(res.price)}`, "ok");
+      toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${money(res.price)}`, "ok");
       await refreshMe();
     } catch (err) {
       toast(err.message, "err");
@@ -115,7 +114,7 @@ function onPrices(updates) {
   for (const u of updates) {
     prices[u.stock_id] = u.price;
     const el = document.getElementById("price-" + u.stock_id);
-    if (el) el.textContent = "$" + fmt(u.price);
+    if (el) el.textContent = "$" + money(u.price);
   }
 }
 function onNews(n) {

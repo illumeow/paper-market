@@ -5,7 +5,6 @@ from app.bank.repo import update_member
 from app.stock import repo
 from app.stock.engine import next_price
 from app.core.errors import BusinessError
-from app.core.money import _int
 
 
 def execute_trade(conn, mid, sid, side, shares, now, actor, *, tuning, noise_scale, rng=_random):
@@ -15,7 +14,7 @@ def execute_trade(conn, mid, sid, side, shares, now, actor, *, tuning, noise_sca
     if s is None:
         raise BusinessError("unknown stock")
     price = s["price"]
-    cost = _int(Decimal(str(price)) * shares)
+    cost = float(Decimal(str(price)) * shares)
     bal = accrue_balance(conn, mid, now)
     held = repo.get_holding(conn, mid, sid)
 

@@ -1,4 +1,4 @@
-import { api } from "/js/common.js";
+import { api, money, count } from "/js/common.js";
 
 // ── Toast ────────────────────────────────────────────────
 const toastEl = document.getElementById("toast");
@@ -9,9 +9,6 @@ function toast(msg, type = "ok") {
   toastEl.className = `show toast-${type}`;
   toastTimer = setTimeout(() => { toastEl.className = ""; }, 3500);
 }
-
-// ── Formatting ───────────────────────────────────────────
-function fmt(n) { return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0 }); }
 
 // ── DOM refs ─────────────────────────────────────────────
 const loginSection    = document.getElementById("login-section");
@@ -104,8 +101,8 @@ function showUnlocked(data) {
   unlockedPanel.classList.remove("hidden");
 
   memberTitle.textContent = "Member: " + data.member_id;
-  mBalance.textContent = "$" + fmt(data.balance);
-  mDebt.textContent    = data.debt > 0 ? "$" + fmt(data.debt) : "—";
+  mBalance.textContent = "$" + money(data.balance);
+  mDebt.textContent    = data.debt > 0 ? "$" + money(data.debt) : "—";
   mReliefStatus.textContent = data.relief_claimed ? "Relief already claimed." : "";
   reliefNote.textContent    = data.relief_claimed ? "(already claimed)" : "";
 
@@ -113,7 +110,7 @@ function showUnlocked(data) {
   if (data.holdings && data.holdings.length > 0) {
     mHoldingsList.innerHTML = data.holdings.map(h =>
       `<div class="row row--between" style="padding:4px 0;border-bottom:1px solid var(--border)">
-        <span>${h.stock_id}</span><span>${fmt(h.shares)} shares</span>
+        <span>${h.stock_id}</span><span>${count(h.shares)} shares</span>
       </div>`
     ).join("");
   } else {
@@ -125,7 +122,7 @@ function showUnlocked(data) {
     const rows = data.fixed_deposits.map(f =>
       `<tr>
         <td>${f.fd_id}</td>
-        <td>$${fmt(f.principal)}</td>
+        <td>$${money(f.principal)}</td>
         <td>${f.term_minutes}min</td>
       </tr>`
     ).join("");
@@ -213,7 +210,7 @@ async function tradeBehalf(side) {
   if (!stock_id || !shares) { toast("Enter stock and shares", "err"); return; }
   try {
     const res = await api("/api/teller/trade", "POST", { id: currentMid, stock_id, side, shares });
-    toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${fmt(res.price)}`, "ok");
+    toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${money(res.price)}`, "ok");
     const data = await api(`/api/member/${encodeURIComponent(currentMid)}`);
     if (!data.locked) showUnlocked(data);
   } catch (err) {

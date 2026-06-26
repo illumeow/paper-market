@@ -3,11 +3,11 @@ import sqlite3
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS members(
   member_id TEXT PRIMARY KEY, pin TEXT UNIQUE NOT NULL,
-  balance INTEGER NOT NULL, balance_accrued_at REAL NOT NULL,
-  debt INTEGER NOT NULL DEFAULT 0, loan_taken_at REAL,
+  balance REAL NOT NULL, balance_accrued_at REAL NOT NULL,
+  debt REAL NOT NULL DEFAULT 0, loan_taken_at REAL,
   relief_claimed INTEGER NOT NULL DEFAULT 0, last_teller_visit_at REAL);
 CREATE TABLE IF NOT EXISTS fixed_deposits(
-  fd_id TEXT PRIMARY KEY, member_id TEXT NOT NULL, principal INTEGER NOT NULL,
+  fd_id TEXT PRIMARY KEY, member_id TEXT NOT NULL, principal REAL NOT NULL,
   term_minutes INTEGER NOT NULL, rate_per_min REAL NOT NULL, created_at REAL NOT NULL,
   matured INTEGER NOT NULL DEFAULT 0, closed INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS holdings(
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS trades(
   side TEXT, shares INTEGER, price REAL, ts REAL, actor TEXT);
 CREATE TABLE IF NOT EXISTS transactions(
   id INTEGER PRIMARY KEY AUTOINCREMENT, member_id TEXT, type TEXT,
-  amount INTEGER, ts REAL, actor TEXT);
+  amount REAL, ts REAL, actor TEXT);
 CREATE TABLE IF NOT EXISTS events(
   id INTEGER PRIMARY KEY AUTOINCREMENT, at_min REAL, stock_id TEXT, pct REAL,
   duration_min REAL, headline TEXT, fired INTEGER NOT NULL DEFAULT 0);

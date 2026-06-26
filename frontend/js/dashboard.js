@@ -14,11 +14,12 @@ function toast(msg, type = "ok") {
 function fmt(n) { return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function minSinceKickoff(ts) {
   if (eventStart == null) return 0;
-  return (ts - eventStart) / 60;
+  return (ts - eventStart) / 60 * timeScale;   // event-minutes (backend TIME_SCALE)
 }
 
 // ── State ────────────────────────────────────────────────
 let eventStart = null;
+let timeScale = 1;   // event-minutes per real-minute; from /api/dashboard (TIME_SCALE)
 const charts = {}; // stock_id -> Chart instance
 const summaryCards = {}; // stock_id -> { priceEl, pctEl }
 
@@ -177,6 +178,7 @@ async function pollDashboard() {
   try {
     const data = await api("/api/dashboard");
     eventStart = data.event_start;
+    timeScale = data.time_scale ?? 1;
     updateEventStatus(data.started, data.elapsed_min);
     // Optionally refresh summary and news too
     if (data.stocks && data.stocks.length > 0) renderSummary(data.stocks);
@@ -189,6 +191,7 @@ async function load() {
   try {
     const data = await api("/api/dashboard");
     eventStart = data.event_start;
+    timeScale = data.time_scale ?? 1;
     updateEventStatus(data.started, data.elapsed_min);
     renderSummary(data.stocks);
     renderCharts(data.stocks);

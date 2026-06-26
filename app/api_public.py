@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from app import repo
-from app.clock import event_start, elapsed_min
+from app.clock import event_start, elapsed_min, _TIME_SCALE
 
 router = APIRouter()
 
@@ -22,4 +22,5 @@ async def dashboard(request: Request):
     return {"stocks": stocks, "news": news,
             "started": event_start(conn) is not None,
             "elapsed_min": elapsed_min(conn),
-            "event_start": event_start(conn)}
+            "event_start": event_start(conn),
+            "time_scale": _TIME_SCALE}

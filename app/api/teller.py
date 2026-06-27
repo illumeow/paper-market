@@ -205,7 +205,9 @@ async def export(request: Request, _: bool = Depends(require_staff)):
             m = bank_repo.get_member(conn, mid)
             bal = bank_service.accrue_balance(conn, mid, now)
             fds = [{"principal": f["principal"], "term_minutes": f["term_minutes"],
-                    "rate_per_min": f["rate_per_min"]} for f in bank_repo.open_fds(conn, mid)]
+                    "rate_per_min": f["rate_per_min"],
+                    "elapsed_min": accrued_minutes(conn, f["created_at"], now)}
+                   for f in bank_repo.open_fds(conn, mid)]
             holds = [{"stock_id": h["stock_id"], "shares": h["shares"]} for h in stock_repo.list_holdings(conn, mid)]
             le = accrued_minutes(conn, m["loan_taken_at"], now)
             amounts[mid] = member_amount(balance=bal, open_fds=fds, holdings=holds,

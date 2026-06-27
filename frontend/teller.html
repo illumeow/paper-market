@@ -41,6 +41,7 @@
         <input id="member-id-input" type="text" placeholder="e.g. 0-1" />
       </div>
       <button id="lookup-btn" class="btn btn--primary" style="margin-top:20px">Lookup</button>
+      <button id="close-lookup-btn" class="btn btn--neutral" style="margin-top:20px">Close</button>
     </div>
   </div>
 
@@ -71,7 +72,6 @@
             <div class="value money neg" id="m-debt">—</div>
           </div>
         </div>
-        <div class="muted" id="m-relief-status"></div>
       </div>
 
       <!-- Holdings -->
@@ -93,61 +93,33 @@
 
         <div class="section-title">Deposit / Withdraw</div>
         <div class="ops-grid" style="margin-bottom:14px">
-          <div>
-            <label>Amount</label>
-            <div class="row" style="gap:6px">
-              <input type="number" min="1" id="deposit-amt" placeholder="Amount" />
-              <button class="btn btn--success btn--sm" id="deposit-btn">Deposit</button>
-            </div>
+          <div class="row" style="gap:6px">
+            <input type="number" min="1" id="deposit-amt" placeholder="Amount" style="flex:1;min-width:0" />
+            <button class="btn btn--success btn--sm" id="deposit-btn" style="min-width:84px">Deposit</button>
           </div>
-          <div>
-            <label>Amount</label>
-            <div class="row" style="gap:6px">
-              <input type="number" min="1" id="withdraw-amt" placeholder="Amount" />
-              <button class="btn btn--danger btn--sm" id="withdraw-btn">Withdraw</button>
-            </div>
+          <div class="row" style="gap:6px">
+            <input type="number" min="1" id="withdraw-amt" placeholder="Amount" style="flex:1;min-width:0" />
+            <button class="btn btn--danger btn--sm" id="withdraw-btn" style="min-width:84px">Withdraw</button>
           </div>
         </div>
 
         <div class="section-title">Loan / Repay</div>
-        <div class="ops-grid" style="margin-bottom:14px">
-          <div>
-            <label>Amount</label>
-            <div class="row" style="gap:6px">
-              <input type="number" min="1" id="loan-amt" placeholder="Amount" />
-              <button class="btn btn--primary btn--sm" id="loan-btn">Issue Loan</button>
-            </div>
+        <div style="margin-bottom:14px">
+          <div class="row" style="gap:6px">
+            <input type="number" min="1" id="loan-repay-amt" placeholder="Amount" style="flex:1" />
+            <button class="btn btn--primary btn--sm" id="loan-repay-btn">Issue Loan</button>
           </div>
-          <div>
-            <label>Amount</label>
-            <div class="row" style="gap:6px">
-              <input type="number" min="1" id="repay-amt" placeholder="Amount" />
-              <button class="btn btn--neutral btn--sm" id="repay-btn">Repay</button>
-            </div>
-          </div>
+          <span class="muted" id="loan-repay-note" style="font-size:.82rem"></span>
         </div>
 
-        <div class="section-title">Relief</div>
-        <div style="margin-bottom:14px">
-          <button class="btn btn--primary btn--sm" id="relief-btn">Claim Relief</button>
-          <span class="muted" id="relief-note" style="margin-left:8px;font-size:.82rem;"></span>
-        </div>
       </div>
 
       <!-- Trade on behalf -->
       <div class="card">
         <h2>Trade on Behalf</h2>
-        <div class="ops-grid" style="margin-bottom:10px">
-          <div class="field">
-            <label>Stock ID</label>
-            <input type="text" id="trade-stock" placeholder="e.g. S1" />
-          </div>
-          <div class="field">
-            <label>Shares</label>
-            <input type="number" min="1" id="trade-shares" placeholder="Qty" />
-          </div>
-        </div>
-        <div class="row" style="gap:8px">
+        <div class="row" style="gap:6px;flex-wrap:nowrap">
+          <select id="trade-stock" style="flex:1;min-width:0"></select>
+          <input type="number" min="1" id="trade-shares" placeholder="Quantity" style="width:100px;flex:0 0 auto" />
           <button class="btn btn--success btn--sm" id="trade-buy-btn">Buy</button>
           <button class="btn btn--danger btn--sm"  id="trade-sell-btn">Sell</button>
         </div>
@@ -161,17 +133,16 @@
     <h2>Event Control</h2>
     <div id="event-status-line" class="muted" style="margin-bottom:10px;"></div>
     <button class="btn btn--success btn--sm" id="start-event-btn" style="display:none;">Start Event</button>
-    <button class="btn btn--danger btn--sm" id="stop-event-btn" style="display:none;">Stop Event</button>
+    <button class="btn btn--danger btn--sm" id="stop-event-btn" style="display:none;">Pause Event</button>
   </div>
 
   <!-- News Publish -->
   <div class="card">
     <h2>Publish News</h2>
-    <div class="field">
-      <label for="news-text">News Text</label>
-      <input type="text" id="news-text" placeholder="Market announcement..." />
+    <div class="row" style="gap:6px">
+      <input type="text" id="news-text" placeholder="Market announcement..." style="flex:1" />
+      <button class="btn btn--primary btn--sm" id="news-btn">Publish</button>
     </div>
-    <button class="btn btn--primary btn--sm" id="news-btn">Publish</button>
   </div>
 
 </div><!-- /app-section -->

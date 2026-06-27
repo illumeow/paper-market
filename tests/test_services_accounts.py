@@ -42,11 +42,3 @@ def test_accrual_frozen_before_start_and_anchored_to_kickoff():
     set_event_start(conn, 600.0)
     # 10 event-minutes of interest: compound(1000, 0.005, 10), no rounding
     assert bank_service.accrue_balance(conn, "0-1", now=1200.0) == pytest.approx(float(compound(1000, 0.005, 10)), rel=1e-9)
-
-
-def test_relief_once_only():
-    conn, cfg = _setup()
-    bank_service.claim_relief(conn, "0-1", now=0.0, actor="teller", relief_amount=500)
-    assert bank_repo.get_member(conn, "0-1")["balance"] == 1500
-    with pytest.raises(ValueError):
-        bank_service.claim_relief(conn, "0-1", now=0.0, actor="teller", relief_amount=500)

@@ -164,7 +164,6 @@ function renderFdOps(data) {
     return;
   }
   fdOps.innerHTML = `
-    <label>Principal</label>
     <div class="fd-open-row">
       <input type="number" min="1" id="fd-principal" placeholder="Amount" />
       ${fdTermSelect(opts)}

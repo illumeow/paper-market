@@ -86,7 +86,6 @@ function fdFormHtml(me) {
     return '<span class="muted">FD window closed — too close to event end.</span>';
   }
   return `<div class="fd-open-form">
-    <label>Principal</label>
     <div class="fd-open-row">
       <input type="number" min="1" id="fd-principal" placeholder="Amount" />
       ${fdTermSelect(opts)}

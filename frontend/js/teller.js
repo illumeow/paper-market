@@ -25,11 +25,9 @@ const countdownEl     = document.getElementById("countdown-display");
 const memberTitle     = document.getElementById("member-title");
 const mBalance        = document.getElementById("m-balance");
 const mDebt           = document.getElementById("m-debt");
-const mReliefStatus   = document.getElementById("m-relief-status");
 const mHoldingsList   = document.getElementById("m-holdings-list");
 const mFdList         = document.getElementById("m-fd-list");
 const fdOps           = document.getElementById("fd-ops");
-const reliefNote      = document.getElementById("relief-note");
 
 // ── Current member state ─────────────────────────────────
 const SNAP_KEY = "pm_teller_member";
@@ -127,9 +125,6 @@ function showUnlocked(data) {
   memberTitle.textContent = "Member: " + data.member_id;
   mBalance.textContent = "$" + money(data.balance);
   mDebt.textContent    = data.debt > 0 ? "$" + money(data.debt) : "—";
-  mReliefStatus.textContent = data.relief_claimed ? "Relief already claimed." : "";
-  reliefNote.textContent    = data.relief_claimed ? "(already claimed)" : "";
-
   // Holdings
   if (data.holdings && data.holdings.length > 0) {
     mHoldingsList.innerHTML = data.holdings.map(h =>
@@ -267,10 +262,6 @@ document.getElementById("loan-repay-btn").addEventListener("click", async () => 
     else
       await tellerOp("/api/teller/loan", { amount: amt }, "Loan issued", ["loan-repay-amt"]);
   } catch (e) { toast(e.message, "err"); }
-});
-
-document.getElementById("relief-btn").addEventListener("click", async () => {
-  await tellerOp("/api/teller/relief", {}, "Relief granted");
 });
 
 // FD open/close handlers are wired per-lookup inside renderFdOps (markup is dynamic).

@@ -10,6 +10,12 @@ if _TIME_SCALE <= 0:
     _TIME_SCALE = 1.0
 
 
+def time_scale():
+    """The event-time multiplier (1.0 in production). Lets non-event clocks —
+    e.g. the teller-visit cooldown — compress under TIME_SCALE for fast testing."""
+    return _TIME_SCALE
+
+
 def event_start(conn):
     row = conn.execute("SELECT value FROM meta WHERE key='event_start_at'").fetchone()
     return float(row["value"]) if row else None

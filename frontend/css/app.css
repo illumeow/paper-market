@@ -130,6 +130,7 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
   margin-bottom: 18px;
 }
 .page-header h1 { font-size: 1.3rem; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
 
 /* ── Login centered card ───────────────────────────────── */
 .login-wrap {

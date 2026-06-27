@@ -185,4 +185,10 @@ pinInput.addEventListener("keydown", e => {
   if (e.key === "Enter") loginBtn.click();
 });
 
+// ── Logout ──────────────────────────────────────────────
+document.getElementById("logout-btn").addEventListener("click", async () => {
+  try { await api("/api/logout", "POST"); } catch (_) { /* clear locally regardless */ }
+  location.reload();  // re-runs init() → no cookie → login screen
+});
+
 init();

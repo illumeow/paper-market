@@ -150,8 +150,8 @@ function renderMarket(market) {
         <span class="stock-price" id="price-${s.stock_id}">$${money(s.price)}</span>
       </div>
       <div class="trade-controls">
-        <span class="muted" id="held-${s.stock_id}">you hold: 0</span>
-        <input type="number" min="1" value="1" id="shares-${s.stock_id}" placeholder="qty" />
+        <span class="muted" id="held-${s.stock_id}" style="margin-right:auto">you hold: 0</span>
+        <input type="text" inputmode="numeric" value="1" id="shares-${s.stock_id}" placeholder="Qty" />
         <button class="btn btn--success btn--sm" data-sid="${s.stock_id}" data-side="buy">Buy</button>
         <button class="btn btn--danger btn--sm"  data-sid="${s.stock_id}" data-side="sell">Sell</button>
       </div>`;
@@ -178,6 +178,11 @@ function renderMarket(market) {
     } finally {
       btn.disabled = false;
     }
+  });
+
+  // Keep the share inputs digit-only (type=number would accept "1e10", "."): strip non-digits as typed.
+  marketList.addEventListener("input", e => {
+    if (e.target.matches('input[id^="shares-"]')) e.target.value = e.target.value.replace(/\D/g, "");
   });
 }
 

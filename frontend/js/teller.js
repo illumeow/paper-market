@@ -32,8 +32,11 @@ const fdOps           = document.getElementById("fd-ops");
 const reliefNote      = document.getElementById("relief-note");
 
 // ── Current member state ─────────────────────────────────
+const SNAP_KEY = "pm_teller_member";
 let currentMid = null;
+let currentDebt = 0;
 let countdownInterval = null;
+let cooldownDeadline = null;
 
 // ── Login ────────────────────────────────────────────────
 loginBtn.addEventListener("click", async () => {
@@ -43,6 +46,8 @@ loginBtn.addEventListener("click", async () => {
     loginSection.classList.add("hidden");
     appSection.classList.remove("hidden");
     loadEventStatus();
+    loadStocks();
+    restoreSnapshot();
   } catch (err) {
     toast(err.message, "err");
   } finally {
@@ -57,7 +62,16 @@ exportBtn.addEventListener("click", () => { window.location = "/api/export"; });
 // ── Logout ───────────────────────────────────────────────
 document.getElementById("logout-btn").addEventListener("click", async () => {
   try { await api("/api/logout", "POST"); } catch (_) { /* clear locally regardless */ }
+  sessionStorage.removeItem(SNAP_KEY);
   location.reload();  // re-runs the session probe → no cookie → login screen
+});
+
+// ── Close lookup ──────────────────────────────────────────
+document.getElementById("close-lookup-btn").addEventListener("click", () => {
+  sessionStorage.removeItem(SNAP_KEY);
+  currentMid = null;
+  memberPanel.classList.add("hidden");
+  memberIdInput.value = "";
 });
 
 // ── Lookup ───────────────────────────────────────────────
@@ -87,26 +101,29 @@ function showLocked(remaining) {
   lockedPanel.classList.remove("hidden");
   unlockedPanel.classList.add("hidden");
   clearInterval(countdownInterval);
-  let secs = remaining;
+  cooldownDeadline = Date.now() + remaining * 1000;
+  updateCountdown();
+  countdownInterval = setInterval(updateCountdown, 1000);
+}
+function updateCountdown() {
+  if (cooldownDeadline == null) return;
+  const secs = Math.max(0, Math.ceil((cooldownDeadline - Date.now()) / 1000));
   countdownEl.textContent = secs;
-  countdownInterval = setInterval(() => {
-    secs--;
-    if (secs <= 0) {
-      clearInterval(countdownInterval);
-      countdownEl.textContent = "0";
-      toast("Cooldown expired — refresh the lookup", "ok");
-    } else {
-      countdownEl.textContent = secs;
-    }
-  }, 1000);
+  if (secs <= 0) {
+    clearInterval(countdownInterval);
+    cooldownDeadline = null;
+    toast("Cooldown expired — refresh the lookup", "ok");
+  }
 }
 
 // ── Show unlocked ─────────────────────────────────────────
 function showUnlocked(data) {
   clearInterval(countdownInterval);
+  cooldownDeadline = null;
   lockedPanel.classList.add("hidden");
   unlockedPanel.classList.remove("hidden");
 
+  currentMid = data.member_id;
   memberTitle.textContent = "Member: " + data.member_id;
   mBalance.textContent = "$" + money(data.balance);
   mDebt.textContent    = data.debt > 0 ? "$" + money(data.debt) : "—";
@@ -124,8 +141,23 @@ function showUnlocked(data) {
     mHoldingsList.innerHTML = '<span class="muted">No holdings.</span>';
   }
 
+  // Loan/Repay unified UI
+  currentDebt = data.debt || 0;
+  const lrBtn  = document.getElementById("loan-repay-btn");
+  const lrNote = document.getElementById("loan-repay-note");
+  if (currentDebt > 0) {
+    lrBtn.textContent = "Repay";
+    lrBtn.className = "btn btn--neutral btn--sm";
+    lrNote.textContent = `Owes $${money(currentDebt)} (incl. accrued interest)`;
+  } else {
+    lrBtn.textContent = "Issue Loan";
+    lrBtn.className = "btn btn--primary btn--sm";
+    lrNote.textContent = "";
+  }
+
   renderMemberFd(data);   // the FD card (payout + countdown)
   renderFdOps(data);      // open form when none, close button when one is open
+  sessionStorage.setItem(SNAP_KEY, JSON.stringify(data));
 }
 
 // ── FD card (read-only details for the looked-up member) ──
@@ -227,14 +259,14 @@ document.getElementById("withdraw-btn").addEventListener("click", async () => {
   catch (e) { toast(e.message, "err"); }
 });
 
-document.getElementById("loan-btn").addEventListener("click", async () => {
-  try { await tellerOp("/api/teller/loan", { amount: amtOf("loan-amt") }, "Loan issued", ["loan-amt"]); }
-  catch (e) { toast(e.message, "err"); }
-});
-
-document.getElementById("repay-btn").addEventListener("click", async () => {
-  try { await tellerOp("/api/teller/repay", { amount: amtOf("repay-amt") }, "Repayment recorded", ["repay-amt"]); }
-  catch (e) { toast(e.message, "err"); }
+document.getElementById("loan-repay-btn").addEventListener("click", async () => {
+  try {
+    const amt = amtOf("loan-repay-amt");
+    if (currentDebt > 0)
+      await tellerOp("/api/teller/repay", { amount: amt }, "Repayment recorded", ["loan-repay-amt"]);
+    else
+      await tellerOp("/api/teller/loan", { amount: amt }, "Loan issued", ["loan-repay-amt"]);
+  } catch (e) { toast(e.message, "err"); }
 });
 
 document.getElementById("relief-btn").addEventListener("click", async () => {
@@ -253,13 +285,22 @@ async function tradeBehalf(side) {
     const res = await api("/api/teller/trade", "POST", { id: currentMid, stock_id, side, shares });
     toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${money(res.price)}`, "ok");
     if (res.member) showUnlocked(res.member);
-    clearInputs("trade-stock", "trade-shares");
+    clearInputs("trade-shares");
   } catch (err) {
     toast(err.message, "err");
   }
 }
 document.getElementById("trade-buy-btn").addEventListener("click",  () => tradeBehalf("buy"));
 document.getElementById("trade-sell-btn").addEventListener("click", () => tradeBehalf("sell"));
+
+// ── Stocks dropdown ───────────────────────────────────────
+async function loadStocks() {
+  try {
+    const market = await api("/api/market");
+    const sel = document.getElementById("trade-stock");
+    sel.innerHTML = market.map(s => `<option value="${s.stock_id}">${s.name} (${s.stock_id})</option>`).join("");
+  } catch (_) { /* leave empty; trade will validate */ }
+}
 
 // ── News publish ──────────────────────────────────────────
 document.getElementById("news-btn").addEventListener("click", async () => {
@@ -275,7 +316,7 @@ document.getElementById("news-btn").addEventListener("click", async () => {
 });
 
 // ── Event Control ─────────────────────────────────────────
-// Three states from {started, paused}: not-started → Start; running → Stop;
+// Three states from {started, paused}: not-started → Start; running → Pause;
 // paused → Resume (the start endpoint doubles as resume).
 const eventStatusLine = document.getElementById("event-status-line");
 const startEventBtn   = document.getElementById("start-event-btn");
@@ -327,17 +368,36 @@ startEventBtn.addEventListener("click", async () => {
 });
 
 stopEventBtn.addEventListener("click", async () => {
-  if (!window.confirm("Stop the event? Market, trading, and all interest/FD accrual freeze. Resume anytime with Start.")) return;
+  if (!window.confirm("Pause the event? Market, trading, and all interest/FD accrual freeze. Resume anytime with Start.")) return;
   stopEventBtn.disabled = true;
   try {
     const res = await api("/api/teller/stop", "POST");
     renderEventControl(res);
-    toast("Event stopped.", "ok");
+    toast("Event paused.", "ok");
   } catch (err) {
     toast(err.message, "err");
   } finally {
     stopEventBtn.disabled = false;
   }
+});
+
+// ── Snapshot restore helper ───────────────────────────────
+function restoreSnapshot() {
+  const saved = sessionStorage.getItem(SNAP_KEY);
+  if (saved) {
+    try {
+      const d = JSON.parse(saved);
+      memberPanel.classList.remove("hidden");
+      showUnlocked(d);
+    } catch (_) {
+      sessionStorage.removeItem(SNAP_KEY);
+    }
+  }
+}
+
+// ── Cooldown tab-focus fix ────────────────────────────────
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && cooldownDeadline != null) updateCountdown();
 });
 
 // ── Restore staff session on load ─────────────────────────
@@ -349,5 +409,7 @@ stopEventBtn.addEventListener("click", async () => {
     loginSection.classList.add("hidden");
     appSection.classList.remove("hidden");
     loadEventStatus();
+    loadStocks();
+    restoreSnapshot();
   } catch (_) { /* not logged in — leave login screen up */ }
 })();

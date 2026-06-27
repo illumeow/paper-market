@@ -41,6 +41,7 @@
         <input id="member-id-input" type="text" placeholder="e.g. 0-1" />
       </div>
       <button id="lookup-btn" class="btn btn--primary" style="margin-top:20px">Lookup</button>
+      <button id="close-lookup-btn" class="btn btn--neutral" style="margin-top:20px">Close</button>
     </div>
   </div>
 
@@ -110,21 +111,13 @@
         </div>
 
         <div class="section-title">Loan / Repay</div>
-        <div class="ops-grid" style="margin-bottom:14px">
-          <div>
-            <label>Amount</label>
-            <div class="row" style="gap:6px">
-              <input type="number" min="1" id="loan-amt" placeholder="Amount" />
-              <button class="btn btn--primary btn--sm" id="loan-btn">Issue Loan</button>
-            </div>
+        <div style="margin-bottom:14px">
+          <label>Amount</label>
+          <div class="row" style="gap:6px">
+            <input type="number" min="1" id="loan-repay-amt" placeholder="Amount" />
+            <button class="btn btn--primary btn--sm" id="loan-repay-btn">Issue Loan</button>
           </div>
-          <div>
-            <label>Amount</label>
-            <div class="row" style="gap:6px">
-              <input type="number" min="1" id="repay-amt" placeholder="Amount" />
-              <button class="btn btn--neutral btn--sm" id="repay-btn">Repay</button>
-            </div>
-          </div>
+          <span class="muted" id="loan-repay-note" style="font-size:.82rem"></span>
         </div>
 
         <div class="section-title">Relief</div>
@@ -140,11 +133,11 @@
         <div class="ops-grid" style="margin-bottom:10px">
           <div class="field">
             <label>Stock ID</label>
-            <input type="text" id="trade-stock" placeholder="e.g. S1" />
+            <select id="trade-stock"></select>
           </div>
           <div class="field">
             <label>Shares</label>
-            <input type="number" min="1" id="trade-shares" placeholder="Qty" />
+            <input type="number" min="1" id="trade-shares" placeholder="Quantity" />
           </div>
         </div>
         <div class="row" style="gap:8px">
@@ -161,7 +154,7 @@
     <h2>Event Control</h2>
     <div id="event-status-line" class="muted" style="margin-bottom:10px;"></div>
     <button class="btn btn--success btn--sm" id="start-event-btn" style="display:none;">Start Event</button>
-    <button class="btn btn--danger btn--sm" id="stop-event-btn" style="display:none;">Stop Event</button>
+    <button class="btn btn--danger btn--sm" id="stop-event-btn" style="display:none;">Pause Event</button>
   </div>
 
   <!-- News Publish -->

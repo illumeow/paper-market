@@ -70,6 +70,15 @@ input, select {
 input:focus, select:focus { border-color: var(--accent); }
 input[type=number] { -moz-appearance: textfield; }
 input[type=number]::-webkit-inner-spin-button { display: none; }
+/* Teller trade-on-behalf stock select: drop native chrome so its height matches
+   the adjacent <input> (full width, unlike the compact fd-open-row select). */
+#trade-stock {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238892a4' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
 
 .field { margin-bottom: 12px; }
 

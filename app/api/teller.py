@@ -6,13 +6,23 @@ from app.bank import service as bank_service
 from app.stock import repo as stock_repo
 from app.stock import service as stock_service
 from app.core.auth import make_token, require_staff, COOKIE
-from app.core.clock import event_start, set_event_start, elapsed_min, accrued_minutes, time_scale
+from app.core.clock import (event_start, set_event_start, elapsed_min, accrued_minutes, time_scale,
+                            is_paused, pause_event, resume_event)
 from app.core.cooldown import visit_status
 from app.core.networth import member_amount
 from app.core.export_csv import build_csv
 from app.core.locks import MUTATION_LOCK
 
 router = APIRouter()
+
+
+def require_running(request: Request):
+    # State mutations freeze while the event is stopped (paused) — this keeps
+    # accrual anchors out of the paused gap. Pre-kickoff is not "paused", so
+    # banking setup before the event still works. Reads/export stay open.
+    if is_paused(request.app.state.conn):
+        raise HTTPException(409, "event paused")
+    return True
 
 
 @router.post("/api/login/staff")
@@ -52,12 +62,29 @@ def _member_snapshot(conn, mid, now, eco):
 
 @router.post("/api/teller/start")
 async def t_start(request: Request, _: bool = Depends(require_staff)):
+    # Doubles as kickoff and resume: first call sets the clock (never reset mid-
+    # event); a call while paused resumes (slides anchors past the paused gap).
+    conn = request.app.state.conn
+    now = time.time()
+    async with MUTATION_LOCK:
+        if event_start(conn) is None:
+            set_event_start(conn, now)
+        elif is_paused(conn):
+            resume_event(conn, now)
+        since = event_start(conn)
+    return {"started": True, "paused": False, "since": since, "elapsed_min": elapsed_min(conn)}
+
+
+@router.post("/api/teller/stop")
+async def t_stop(request: Request, _: bool = Depends(require_staff)):
+    # Freeze the event: market + trading + all interest/FD accrual stop at `now`.
+    # Idempotent; reversible via Start (resume). No-op before kickoff.
     conn = request.app.state.conn
     async with MUTATION_LOCK:
-        if event_start(conn) is None:        # idempotent: only set once, never reset mid-event
-            set_event_start(conn, time.time())
-        since = event_start(conn)
-    return {"started": True, "since": since, "elapsed_min": elapsed_min(conn)}
+        if event_start(conn) is not None:
+            pause_event(conn, time.time())
+    return {"started": event_start(conn) is not None, "paused": is_paused(conn),
+            "elapsed_min": elapsed_min(conn)}
 
 
 @router.get("/api/member/{mid}")
@@ -83,7 +110,7 @@ def _eco(request):
 
 
 @router.post("/api/teller/deposit")
-async def t_deposit(request: Request, _: bool = Depends(require_staff)):
+async def t_deposit(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.deposit(conn, b["id"], int(b["amount"]), now, "teller")
@@ -91,7 +118,7 @@ async def t_deposit(request: Request, _: bool = Depends(require_staff)):
 
 
 @router.post("/api/teller/withdraw")
-async def t_withdraw(request: Request, _: bool = Depends(require_staff)):
+async def t_withdraw(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.withdraw(conn, b["id"], int(b["amount"]), now, "teller")
@@ -99,7 +126,7 @@ async def t_withdraw(request: Request, _: bool = Depends(require_staff)):
 
 
 @router.post("/api/teller/loan")
-async def t_loan(request: Request, _: bool = Depends(require_staff)):
+async def t_loan(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.loan_disburse(conn, b["id"], int(b["amount"]), now, "teller", _eco(request)["loan_cap"])
@@ -107,7 +134,7 @@ async def t_loan(request: Request, _: bool = Depends(require_staff)):
 
 
 @router.post("/api/teller/repay")
-async def t_repay(request: Request, _: bool = Depends(require_staff)):
+async def t_repay(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.loan_repay(conn, b["id"], int(b["amount"]), now, "teller")
@@ -115,7 +142,7 @@ async def t_repay(request: Request, _: bool = Depends(require_staff)):
 
 
 @router.post("/api/teller/relief")
-async def t_relief(request: Request, _: bool = Depends(require_staff)):
+async def t_relief(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.claim_relief(conn, b["id"], now, "teller", _eco(request)["relief_amount"])
@@ -123,7 +150,7 @@ async def t_relief(request: Request, _: bool = Depends(require_staff)):
 
 
 @router.post("/api/teller/fd/open")
-async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
+async def t_fd_open(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); eco = _eco(request); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         fd = bank_service.fd_open(conn, b["id"], int(b["principal"]), int(b["term"]),
@@ -134,7 +161,7 @@ async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
 
 
 @router.post("/api/teller/fd/close")
-async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
+async def t_fd_close(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.fd_close_current(conn, b["id"], now, "teller", demand_rate=_eco(request)["demand_rate"])
@@ -145,6 +172,8 @@ async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
 async def t_trade(request: Request, _: bool = Depends(require_staff)):
     if event_start(request.app.state.conn) is None:
         raise HTTPException(409, "event not started")
+    if is_paused(request.app.state.conn):
+        raise HTTPException(409, "event paused")
     b = await request.json(); cfg = request.app.state.config; conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         res = stock_service.execute_trade(conn, b["id"], b["stock_id"], b["side"],

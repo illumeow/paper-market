@@ -97,6 +97,50 @@ def test_start_requires_staff(client):
     assert client.post("/api/teller/start").status_code == 403
 
 
+def test_stop_then_resume_event(client):
+    _staff(client)
+    client.post("/api/teller/start")
+    s = client.post("/api/teller/stop").json()
+    assert s["started"] is True and s["paused"] is True
+    assert client.get("/api/dashboard").json()["paused"] is True
+    r = client.post("/api/teller/start").json()  # Start doubles as resume
+    assert r["paused"] is False
+    assert client.get("/api/dashboard").json()["paused"] is False
+
+
+def test_stop_requires_staff(client):
+    assert client.post("/api/teller/stop").status_code == 403
+
+
+def test_trade_blocked_when_paused(client):
+    _staff(client)
+    client.post("/api/teller/start")
+    client.post("/api/teller/stop")
+    r = client.post("/api/teller/trade", json={"id": "0-1", "stock_id": "TECH", "side": "buy", "shares": 1})
+    assert r.status_code == 409 and r.json()["detail"] == "event paused"
+
+
+def test_banking_ops_blocked_when_paused(client):
+    _staff(client)
+    client.post("/api/teller/start")
+    client.post("/api/teller/stop")
+    # every state mutation freezes; reads/export stay open
+    assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 409
+    assert client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 100}).status_code == 409
+    assert client.post("/api/teller/fd/open", json={"id": "0-1", "principal": 100, "term": 30}).status_code == 409
+    assert client.get("/api/member/0-1").status_code == 200          # read still works
+    assert client.get("/api/export").status_code == 200              # export still works
+    # resume re-opens banking
+    client.post("/api/teller/start")
+    assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
+
+
+def test_banking_allowed_before_kickoff(client):
+    # pre-kickoff is not "paused" — setup banking must still work
+    _staff(client)
+    assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
+
+
 def test_business_error_returns_400_with_message(client):
     # A domain rejection surfaces as 400 + detail (frontend toasts it), not a 500.
     _staff(client)

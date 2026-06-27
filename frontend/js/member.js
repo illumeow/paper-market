@@ -151,7 +151,7 @@ function renderMarket(market) {
       </div>
       <div class="trade-controls">
         <span class="muted" id="held-${s.stock_id}" style="margin-right:auto">you hold: 0</span>
-        <input type="text" inputmode="numeric" value="1" id="shares-${s.stock_id}" placeholder="Qty" />
+        <input type="text" inputmode="numeric" value="1" id="shares-${s.stock_id}" placeholder="Quantity" />
         <button class="btn btn--success btn--sm" data-sid="${s.stock_id}" data-side="buy">Buy</button>
         <button class="btn btn--danger btn--sm"  data-sid="${s.stock_id}" data-side="sell">Sell</button>
       </div>`;

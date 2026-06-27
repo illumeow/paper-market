@@ -275,22 +275,37 @@ document.getElementById("news-btn").addEventListener("click", async () => {
 });
 
 // ── Event Control ─────────────────────────────────────────
+// Three states from {started, paused}: not-started → Start; running → Stop;
+// paused → Resume (the start endpoint doubles as resume).
 const eventStatusLine = document.getElementById("event-status-line");
 const startEventBtn   = document.getElementById("start-event-btn");
+const stopEventBtn    = document.getElementById("stop-event-btn");
+
+function renderEventControl(data) {
+  const elapsed = Math.round(data.elapsed_min || 0);
+  if (!data.started) {
+    eventStatusLine.textContent = "Event not started.";
+    eventStatusLine.className = "muted";
+    startEventBtn.textContent = "Start Event";
+    startEventBtn.style.display = "";
+    stopEventBtn.style.display = "none";
+  } else if (data.paused) {
+    eventStatusLine.textContent = `Event paused — elapsed ${elapsed} min`;
+    eventStatusLine.className = "muted";
+    startEventBtn.textContent = "Resume Event";
+    startEventBtn.style.display = "";
+    stopEventBtn.style.display = "none";
+  } else {
+    eventStatusLine.textContent = `Event running — elapsed ${elapsed} min`;
+    eventStatusLine.className = "pos";
+    startEventBtn.style.display = "none";
+    stopEventBtn.style.display = "";
+  }
+}
 
 async function loadEventStatus() {
   try {
-    const data = await api("/api/dashboard");
-    if (data.started) {
-      const elapsed = Math.round(data.elapsed_min);
-      eventStatusLine.textContent = `Event running — elapsed ${elapsed} min`;
-      eventStatusLine.className = "pos";
-      startEventBtn.style.display = "none";
-    } else {
-      eventStatusLine.textContent = "Event not started.";
-      eventStatusLine.className = "muted";
-      startEventBtn.style.display = "";
-    }
+    renderEventControl(await api("/api/dashboard"));
   } catch (err) {
     eventStatusLine.textContent = "Could not load event status.";
     eventStatusLine.className = "muted";
@@ -298,17 +313,30 @@ async function loadEventStatus() {
 }
 
 startEventBtn.addEventListener("click", async () => {
+  const resuming = startEventBtn.textContent.includes("Resume");
   startEventBtn.disabled = true;
   try {
     const res = await api("/api/teller/start", "POST");
-    const elapsed = Math.round(res.elapsed_min);
-    eventStatusLine.textContent = `Event running (started just now) — elapsed ${elapsed} min`;
-    eventStatusLine.className = "pos";
-    startEventBtn.style.display = "none";
-    toast("Event started!", "ok");
+    renderEventControl({ started: true, paused: false, elapsed_min: res.elapsed_min });
+    toast(resuming ? "Event resumed!" : "Event started!", "ok");
   } catch (err) {
     toast(err.message, "err");
+  } finally {
     startEventBtn.disabled = false;
+  }
+});
+
+stopEventBtn.addEventListener("click", async () => {
+  if (!window.confirm("Stop the event? Market, trading, and all interest/FD accrual freeze. Resume anytime with Start.")) return;
+  stopEventBtn.disabled = true;
+  try {
+    const res = await api("/api/teller/stop", "POST");
+    renderEventControl(res);
+    toast("Event stopped.", "ok");
+  } catch (err) {
+    toast(err.message, "err");
+  } finally {
+    stopEventBtn.disabled = false;
   }
 });
 

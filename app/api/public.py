@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from app.stock import repo as stock_repo
 from app.core.auth import COOKIE
-from app.core.clock import event_start, elapsed_min, _TIME_SCALE
+from app.core.clock import event_start, elapsed_min, is_paused, _TIME_SCALE
 
 router = APIRouter()
 
@@ -32,6 +32,7 @@ async def dashboard(request: Request):
     news = [dict(n) for n in stock_repo.current_news(conn, limit=10)]
     return {"stocks": stocks, "news": news,
             "started": event_start(conn) is not None,
+            "paused": is_paused(conn),
             "elapsed_min": elapsed_min(conn),
             "event_start": event_start(conn),
             "time_scale": _TIME_SCALE}

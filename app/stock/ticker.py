@@ -4,7 +4,7 @@ from app.core.locks import MUTATION_LOCK
 from app.stock import events
 from app.stock import repo as stock_repo
 from app.bank import service as bank_service
-from app.core.clock import event_start, _TIME_SCALE
+from app.core.clock import event_start, is_paused, _TIME_SCALE
 
 
 async def run_ticker(app):
@@ -18,8 +18,8 @@ async def run_ticker(app):
     while True:
         await asyncio.sleep(tick_sleep)
         now = time.time()
-        if event_start(app.state.conn) is None:
-            continue   # event not started: market frozen, no price evolution
+        if event_start(app.state.conn) is None or is_paused(app.state.conn):
+            continue   # not started or stopped: market frozen, no price evolution
         async with MUTATION_LOCK:
             updated = events.tick_prices(app.state.conn, now, tuning=cfg.tuning,
                                          noise_scale=cfg.tuning.noise_scale, quarter_min=cfg.quarter_min,

@@ -7,7 +7,7 @@ from app.bank import service as bank_service
 from app.stock import repo as stock_repo
 from app.stock import service as stock_service
 from app.core.auth import pin_hash, make_token, require_member, COOKIE
-from app.core.clock import event_start, elapsed_min
+from app.core.clock import event_start, elapsed_min, is_paused
 from app.core.locks import MUTATION_LOCK
 
 router = APIRouter()
@@ -48,6 +48,8 @@ async def me(request: Request, mid: str = Depends(require_member)):
 
 @router.post("/api/fd/open")
 async def m_fd_open(request: Request, mid: str = Depends(require_member)):
+    if is_paused(request.app.state.conn):
+        raise HTTPException(409, "event paused")
     b = await request.json()
     eco = request.app.state.config.economy
     async with MUTATION_LOCK:
@@ -60,6 +62,8 @@ async def m_fd_open(request: Request, mid: str = Depends(require_member)):
 
 @router.post("/api/fd/close")
 async def m_fd_close(request: Request, mid: str = Depends(require_member)):
+    if is_paused(request.app.state.conn):
+        raise HTTPException(409, "event paused")
     async with MUTATION_LOCK:
         bank_service.fd_close_current(request.app.state.conn, mid, time.time(), "member",
                                       demand_rate=request.app.state.config.economy["demand_rate"])
@@ -76,6 +80,8 @@ async def market(request: Request):
 async def trade(request: Request, mid: str = Depends(require_member)):
     if event_start(request.app.state.conn) is None:
         raise HTTPException(409, "event not started")
+    if is_paused(request.app.state.conn):
+        raise HTTPException(409, "event paused")
     body = await request.json()
     cfg = request.app.state.config
     async with MUTATION_LOCK:

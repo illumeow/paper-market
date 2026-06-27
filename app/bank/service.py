@@ -1,6 +1,6 @@
 import uuid
 from app.bank import repo
-from app.core.clock import elapsed_min, accrued_minutes
+from app.core.clock import elapsed_min, accrued_minutes, effective_now
 from app.core.errors import BusinessError
 from app.bank.interest import demand_balance, loan_owed, fd_maturity, fd_early_exit
 
@@ -9,7 +9,10 @@ def accrue_balance(conn, mid, now) -> float:
     m = repo.get_member(conn, mid)
     minutes = accrued_minutes(conn, m["balance_accrued_at"], now)
     new_bal = float(demand_balance(m["balance"], minutes))
-    repo.update_member(conn, mid, balance=new_bal, balance_accrued_at=now)
+    # Stamp the anchor at effective-now: while paused this is the frozen pause
+    # instant, so a read during the pause can't plant a gap timestamp that
+    # resume_event would slide past the resume point (→ lost interest).
+    repo.update_member(conn, mid, balance=new_bal, balance_accrued_at=effective_now(conn, now))
     return new_bal
 
 

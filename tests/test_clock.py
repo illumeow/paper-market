@@ -1,6 +1,8 @@
+import pytest
 import app.core.db as db
 import app.core.clock as clock_mod
-from app.core.clock import set_event_start, elapsed_min, accrued_minutes
+from app.core.clock import (set_event_start, elapsed_min, accrued_minutes,
+                            pause_event, resume_event, is_paused)
 
 
 def _fresh_conn():
@@ -70,3 +72,70 @@ def test_accrued_minutes_with_scale_10(monkeypatch):
     set_event_start(conn, start)
     now = start + 600
     assert accrued_minutes(conn, since_ts=start, now=now) == 100.0
+
+
+# ---------------------------------------------------------------------------
+# Pause / resume — the clock freezes while stopped, paused gap never accrues
+# ---------------------------------------------------------------------------
+
+def test_pause_freezes_elapsed_and_accrued():
+    conn = _fresh_conn()
+    start = 1_000_000.0
+    set_event_start(conn, start)
+    pause_event(conn, start + 600)  # stop at 10 min
+    assert is_paused(conn)
+    # clock frozen at the pause instant no matter how late `now` is
+    assert elapsed_min(conn, now=start + 6000) == 10.0
+    assert accrued_minutes(conn, since_ts=start, now=start + 6000) == 10.0
+
+
+def test_pause_is_idempotent():
+    conn = _fresh_conn()
+    set_event_start(conn, 1_000_000.0)
+    pause_event(conn, 1_000_600.0)
+    pause_event(conn, 1_000_900.0)  # second call must not move the pause instant
+    assert clock_mod.event_paused_at(conn) == 1_000_600.0
+
+
+def test_resume_excludes_paused_gap():
+    conn = _fresh_conn()
+    start = 1_000_000.0
+    set_event_start(conn, start)
+    conn.execute("INSERT INTO members(member_id,pin,balance,balance_accrued_at,debt) "
+                 "VALUES('0-1','h',1000,?,0)", (start,))
+    conn.commit()
+    pause_event(conn, start + 600)          # pause at 10 active-min
+    resume_event(conn, start + 600 + 300)   # paused 300 s (5 min), then resume
+    assert not is_paused(conn)
+    now = start + 600 + 300 + 300           # 5 more wall-min after resume
+    anchor = conn.execute("SELECT balance_accrued_at FROM members WHERE member_id='0-1'").fetchone()[0]
+    # 10 min before pause + 5 after resume = 15; the 5 paused min are excluded
+    assert accrued_minutes(conn, since_ts=anchor, now=now) == 15.0
+    assert elapsed_min(conn, now=now) == 15.0
+
+
+def test_resume_without_pause_is_noop():
+    conn = _fresh_conn()
+    set_event_start(conn, 1_000_000.0)
+    resume_event(conn, 1_000_600.0)  # not paused → no shift
+    assert elapsed_min(conn, now=1_000_600.0) == 10.0
+
+
+def test_accrue_during_pause_does_not_lose_interest_on_resume():
+    """A read (lazy accrue) during the pause must not plant a gap timestamp that
+    resume_event slides past the resume point — else post-resume interest is lost."""
+    from app.bank import service as bank_service
+    from app.bank.interest import demand_balance
+    conn = _fresh_conn()
+    start = 1_000_000.0
+    set_event_start(conn, start)
+    conn.execute("INSERT INTO members(member_id,pin,balance,balance_accrued_at,debt) "
+                 "VALUES('0-1','h',1000,?,0)", (start,))
+    conn.commit()
+    pause_event(conn, start + 600)                       # pause at 10 active-min
+    bank_service.accrue_balance(conn, "0-1", start + 600 + 150)  # mid-pause read
+    resume_event(conn, start + 600 + 300)                # resume after 5-min pause
+    final = bank_service.accrue_balance(conn, "0-1", start + 600 + 300 + 300)  # +5 active-min
+    # 10 min before pause + 5 after resume = 15; the paused 5 min must not count
+    # (re-feeding rounded floats through compound drifts in the last digits → approx)
+    assert final == pytest.approx(float(demand_balance(1000, 15)), rel=1e-9)

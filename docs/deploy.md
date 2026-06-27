@@ -115,6 +115,20 @@ docker compose down                    # stop (data persists in ./data)
 
 `./config` is mounted read-only into the container, so you can edit `config/config.toml` (stocks, economy rates, scheduled events) on the host. Changes that affect already-provisioned rows (members/stocks/events) only take effect on the next `setup_db.py --reset`. Tuning/tick values are read at startup — `docker compose restart app` to apply.
 
+## Redeploying after a change
+
+Application code (`app/`, `frontend/`, `scripts/`, `pyproject.toml`) is **copied into the image at build time** — only `./data` and `./config` are mounted. So a plain `docker compose up -d` reuses the old image and your code change won't appear.
+
+| Changed | What to run |
+|---|---|
+| `app/**`, `frontend/**`, `scripts/**`, `pyproject.toml` | `docker compose up -d --build` |
+| `.env` | `docker compose up -d` (recreates the container, re-reads env) |
+| `config/config.toml` only | `docker compose restart app` |
+
+`docker compose up -d --build` is a safe default for almost everything — the build cache makes it near-instant when nothing changed, and it never touches `./data` (DB + event clock persist). **One exception:** a `config/config.toml`-only edit leaves the image and container spec unchanged, so compose reports "up to date" and does **not** recreate — the new config is never re-read. Use `docker compose restart app` for that case.
+
+The prod `CMD` has no `--reload`, so nothing hot-reloads — every change needs a rebuild or restart as above.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |

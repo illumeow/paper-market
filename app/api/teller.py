@@ -51,7 +51,6 @@ def _member_snapshot(conn, mid, now, eco):
     m = bank_repo.get_member(conn, mid)
     bal = bank_service.accrue_balance(conn, mid, now)
     return {"member_id": mid, "locked": False, "balance": bal, "debt": m["debt"],
-            "relief_claimed": bool(m["relief_claimed"]),
             "fixed_deposits": [bank_service.fd_public(conn, f, now, demand_rate=eco["demand_rate"])
                                for f in bank_repo.open_fds(conn, mid)],
             "fd_options": bank_service.fd_term_options(eco),
@@ -138,14 +137,6 @@ async def t_repay(request: Request, _: bool = Depends(require_staff), __: bool =
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.loan_repay(conn, b["id"], int(b["amount"]), now, "teller")
-        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
-
-
-@router.post("/api/teller/relief")
-async def t_relief(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
-    b = await request.json(); conn = request.app.state.conn; now = time.time()
-    async with MUTATION_LOCK:
-        bank_service.claim_relief(conn, b["id"], now, "teller", _eco(request)["relief_amount"])
         return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 

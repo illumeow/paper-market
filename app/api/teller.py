@@ -33,15 +33,20 @@ async def t_session(_: bool = Depends(require_staff)):
     return {"staff": True}
 
 
-def _member_snapshot(conn, mid, now):
+def _member_snapshot(conn, mid, now, eco):
     """The unlocked member view returned by lookup. Teller ops return this so the
     page refreshes from the op's own response — never a re-lookup, which would
-    re-hit the cooldown gate and leave the panel stale."""
+    re-hit the cooldown gate and leave the panel stale. Carries the enriched FD
+    view (payout/remaining/options) so the FD card stays live after every op."""
     m = bank_repo.get_member(conn, mid)
     bal = bank_service.accrue_balance(conn, mid, now)
     return {"member_id": mid, "locked": False, "balance": bal, "debt": m["debt"],
             "relief_claimed": bool(m["relief_claimed"]),
-            "fixed_deposits": [dict(f) for f in bank_repo.open_fds(conn, mid)],
+            "fixed_deposits": [bank_service.fd_public(conn, f, now, demand_rate=eco["demand_rate"])
+                               for f in bank_repo.open_fds(conn, mid)],
+            "fd_options": bank_service.fd_term_options(eco),
+            "elapsed_min": elapsed_min(conn, now),
+            "event_duration_min": eco["event_duration_min"],
             "holdings": [dict(h) for h in stock_repo.list_holdings(conn, mid)]}
 
 
@@ -67,9 +72,10 @@ async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
                                      time_scale=time_scale())
     if locked:
         return {"member_id": mid, "locked": True, "cooldown_remaining_sec": int(remaining)}
+    eco = request.app.state.config.economy
     async with MUTATION_LOCK:
         bank_repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
-        return _member_snapshot(conn, mid, now)
+        return _member_snapshot(conn, mid, now, eco)
 
 
 def _eco(request):
@@ -81,7 +87,7 @@ async def t_deposit(request: Request, _: bool = Depends(require_staff)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.deposit(conn, b["id"], int(b["amount"]), now, "teller")
-        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
 @router.post("/api/teller/withdraw")
@@ -89,7 +95,7 @@ async def t_withdraw(request: Request, _: bool = Depends(require_staff)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.withdraw(conn, b["id"], int(b["amount"]), now, "teller")
-        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
 @router.post("/api/teller/loan")
@@ -97,7 +103,7 @@ async def t_loan(request: Request, _: bool = Depends(require_staff)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.loan_disburse(conn, b["id"], int(b["amount"]), now, "teller", _eco(request)["loan_cap"])
-        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
 @router.post("/api/teller/repay")
@@ -105,7 +111,7 @@ async def t_repay(request: Request, _: bool = Depends(require_staff)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.loan_repay(conn, b["id"], int(b["amount"]), now, "teller")
-        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
 @router.post("/api/teller/relief")
@@ -113,7 +119,7 @@ async def t_relief(request: Request, _: bool = Depends(require_staff)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         bank_service.claim_relief(conn, b["id"], now, "teller", _eco(request)["relief_amount"])
-        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
 @router.post("/api/teller/fd/open")
@@ -124,16 +130,15 @@ async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
                                   now, "teller", demand_rate=eco["demand_rate"],
                                   fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
                                   event_duration_min=eco["event_duration_min"])
-        return {"fd_id": fd, "member": _member_snapshot(conn, b["id"], now)}
+        return {"fd_id": fd, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
 @router.post("/api/teller/fd/close")
 async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.fd_close(conn, b["id"], b["fd_id"], now, "teller",
-                              demand_rate=_eco(request)["demand_rate"])
-        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
+        bank_service.fd_close_current(conn, b["id"], now, "teller", demand_rate=_eco(request)["demand_rate"])
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
 @router.post("/api/teller/trade")
@@ -145,7 +150,7 @@ async def t_trade(request: Request, _: bool = Depends(require_staff)):
         res = stock_service.execute_trade(conn, b["id"], b["stock_id"], b["side"],
                                           int(b["shares"]), now, "teller",
                                           tuning=cfg.tuning, noise_scale=cfg.tuning.noise_scale)
-        snap = _member_snapshot(conn, b["id"], now)
+        snap = _member_snapshot(conn, b["id"], now, _eco(request))
     await request.app.state.broadcaster.publish({"type": "prices",
         "data": [{"stock_id": b["stock_id"], "price": res["price"]}]})
     return {**res, "member": snap}

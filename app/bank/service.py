@@ -75,6 +75,8 @@ def fd_open(conn, mid, principal, term, now, actor, *, demand_rate, fd_rate_30,
         raise BusinessError("term must be 30 or 60")
     if principal <= 0:
         raise BusinessError("principal must be positive")
+    if repo.open_fds(conn, mid):
+        raise BusinessError("member already has an open fixed deposit")
     if elapsed_min(conn, now) + term > event_duration_min:
         raise BusinessError("past opening cutoff")
     bal = accrue_balance(conn, mid, now)
@@ -103,3 +105,49 @@ def fd_close(conn, mid, fd_id, now, actor, *, demand_rate):
     repo.update_member(conn, mid, balance=bal + payout)
     repo.close_fd(conn, fd_id, matured)
     repo.add_txn(conn, mid, "fd_close", payout, now, actor)
+
+
+def fd_close_current(conn, mid, now, actor, *, demand_rate):
+    """Close the member's single open FD (one-FD-per-member invariant) — no fd_id needed."""
+    fds = repo.open_fds(conn, mid)
+    if not fds:
+        raise BusinessError("no open fixed deposit")
+    fd_close(conn, mid, fds[0]["fd_id"], now, actor, demand_rate=demand_rate)
+
+
+def close_matured_fds(conn, now, *, demand_rate):
+    """Sweep: auto-close every open FD that has reached its term, crediting the
+    matured payout. Called each ticker tick so maturity settles event-wide,
+    independent of whether anyone is viewing, and frees the one-FD slot."""
+    closed = 0
+    for fd in repo.all_open_fds(conn):
+        if accrued_minutes(conn, fd["created_at"], now) >= fd["term_minutes"]:
+            fd_close(conn, fd["member_id"], fd["fd_id"], now, "system", demand_rate=demand_rate)
+            closed += 1
+    return closed
+
+
+def fd_term_options(eco):
+    """The selectable FD terms + their per-minute rates (drives the open-form chooser)."""
+    return [{"term": 30, "rate": eco["fd_rate_30"]},
+            {"term": 60, "rate": eco["fd_rate_60"]}]
+
+
+def fd_public(conn, fd, now, *, demand_rate):
+    """Client-facing FD view: base fields + derived maturity payout, the amount
+    a close-right-now would return (matured payout, else early-exit penalty value),
+    remaining event-minutes, and matured flag (server owns the clock + formulas)."""
+    elapsed = accrued_minutes(conn, fd["created_at"], now)
+    term = fd["term_minutes"]
+    matured = elapsed >= term
+    payout = float(fd_maturity(fd["principal"], term, fd["rate_per_min"]))
+    close_value_now = payout if matured else float(fd_early_exit(fd["principal"], elapsed, demand_rate))
+    return {
+        "principal": fd["principal"],
+        "term_minutes": term,
+        "rate_per_min": fd["rate_per_min"],
+        "payout": payout,
+        "close_value_now": close_value_now,
+        "remaining_min": max(0.0, term - elapsed),
+        "matured": matured,
+    }

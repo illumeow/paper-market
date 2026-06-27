@@ -54,6 +54,12 @@ staffPw.addEventListener("keydown", e => { if (e.key === "Enter") loginBtn.click
 // ── Export ───────────────────────────────────────────────
 exportBtn.addEventListener("click", () => { window.location = "/api/export"; });
 
+// ── Logout ───────────────────────────────────────────────
+document.getElementById("logout-btn").addEventListener("click", async () => {
+  try { await api("/api/logout", "POST"); } catch (_) { /* clear locally regardless */ }
+  location.reload();  // re-runs the session probe → no cookie → login screen
+});
+
 // ── Lookup ───────────────────────────────────────────────
 lookupBtn.addEventListener("click", async () => {
   const mid = memberIdInput.value.trim();
@@ -187,14 +193,19 @@ function renderFdOps(data) {
 }
 
 // ── Generic teller op helper ──────────────────────────────
-async function tellerOp(endpoint, body, successMsg) {
+function clearInputs(...ids) {
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+}
+
+async function tellerOp(endpoint, body, successMsg, clearIds = []) {
   if (!currentMid) { toast("Lookup a member first", "err"); return; }
   try {
-    await api(endpoint, "POST", { id: currentMid, ...body });
+    // The op returns the fresh member snapshot — refresh from it directly.
+    // A re-lookup would re-hit the cooldown gate and leave the panel stale.
+    const res = await api(endpoint, "POST", { id: currentMid, ...body });
     toast(successMsg, "ok");
-    // Re-fetch to refresh balances
-    const data = await api(`/api/member/${encodeURIComponent(currentMid)}`);
-    if (!data.locked) showUnlocked(data);
+    if (res.member) showUnlocked(res.member);
+    clearInputs(...clearIds);
   } catch (err) {
     toast(err.message, "err");
   }
@@ -208,22 +219,22 @@ function amtOf(id) {
 }
 
 document.getElementById("deposit-btn").addEventListener("click", async () => {
-  try { await tellerOp("/api/teller/deposit", { amount: amtOf("deposit-amt") }, "Deposit successful"); }
+  try { await tellerOp("/api/teller/deposit", { amount: amtOf("deposit-amt") }, "Deposit successful", ["deposit-amt"]); }
   catch (e) { toast(e.message, "err"); }
 });
 
 document.getElementById("withdraw-btn").addEventListener("click", async () => {
-  try { await tellerOp("/api/teller/withdraw", { amount: amtOf("withdraw-amt") }, "Withdrawal successful"); }
+  try { await tellerOp("/api/teller/withdraw", { amount: amtOf("withdraw-amt") }, "Withdrawal successful", ["withdraw-amt"]); }
   catch (e) { toast(e.message, "err"); }
 });
 
 document.getElementById("loan-btn").addEventListener("click", async () => {
-  try { await tellerOp("/api/teller/loan", { amount: amtOf("loan-amt") }, "Loan issued"); }
+  try { await tellerOp("/api/teller/loan", { amount: amtOf("loan-amt") }, "Loan issued", ["loan-amt"]); }
   catch (e) { toast(e.message, "err"); }
 });
 
 document.getElementById("repay-btn").addEventListener("click", async () => {
-  try { await tellerOp("/api/teller/repay", { amount: amtOf("repay-amt") }, "Repayment recorded"); }
+  try { await tellerOp("/api/teller/repay", { amount: amtOf("repay-amt") }, "Repayment recorded", ["repay-amt"]); }
   catch (e) { toast(e.message, "err"); }
 });
 
@@ -242,8 +253,8 @@ async function tradeBehalf(side) {
   try {
     const res = await api("/api/teller/trade", "POST", { id: currentMid, stock_id, side, shares });
     toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${money(res.price)}`, "ok");
-    const data = await api(`/api/member/${encodeURIComponent(currentMid)}`);
-    if (!data.locked) showUnlocked(data);
+    if (res.member) showUnlocked(res.member);
+    clearInputs("trade-stock", "trade-shares");
   } catch (err) {
     toast(err.message, "err");
   }
@@ -302,11 +313,14 @@ startEventBtn.addEventListener("click", async () => {
   }
 });
 
-// ── Check if already logged in ────────────────────────────
+// ── Restore staff session on load ─────────────────────────
+// The pm_session cookie persists across refresh but is httponly, so JS can't
+// read it — probe a staff-only endpoint. If valid, skip the login screen.
 (async () => {
   try {
-    // Attempt a staff-only endpoint probe by calling /api/dashboard (public) is wrong
-    // Try /api/member/... won't work w/o a member id.
-    // Just show login on load — no silent re-auth for teller.
-  } catch (_) { /* pass */ }
+    await api("/api/teller/session");
+    loginSection.classList.add("hidden");
+    appSection.classList.remove("hidden");
+    loadEventStatus();
+  } catch (_) { /* not logged in — leave login screen up */ }
 })();

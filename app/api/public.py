@@ -1,8 +1,19 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 from app.stock import repo as stock_repo
+from app.core.auth import COOKIE
 from app.core.clock import event_start, elapsed_min, _TIME_SCALE
 
 router = APIRouter()
+
+
+@router.post("/api/logout")
+async def logout():
+    # One cookie carries both roles, so this logs out member or staff alike.
+    # Open by design — clearing your own session needs no auth.
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(COOKIE, path="/", samesite="lax")
+    return resp
 
 
 @router.get("/api/dashboard")

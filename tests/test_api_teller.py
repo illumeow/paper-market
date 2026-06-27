@@ -40,6 +40,30 @@ def test_cooldown_locks_second_lookup(client):
     assert second["locked"] is True and second["cooldown_remaining_sec"] > 0
 
 
+def test_session_probe_requires_staff(client):
+    assert client.get("/api/teller/session").status_code == 403
+    _staff(client)
+    assert client.get("/api/teller/session").json()["staff"] is True
+
+
+def test_logout_clears_session(client):
+    _staff(client)
+    assert client.get("/api/teller/session").status_code == 200
+    assert client.post("/api/logout").status_code == 200
+    assert client.get("/api/teller/session").status_code == 403  # cookie cleared
+
+
+def test_op_returns_snapshot_without_relocking(client):
+    _staff(client)
+    assert client.get("/api/member/0-1").json()["locked"] is False  # starts the visit
+    # The op returns a fresh, unlocked snapshot — no re-lookup needed, so the
+    # cooldown started by the lookup never blocks the post-op refresh.
+    dep = client.post("/api/teller/deposit", json={"id": "0-1", "amount": 250}).json()
+    assert dep["member"]["locked"] is False and dep["member"]["balance"] >= 250
+    wd = client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 50}).json()
+    assert wd["member"]["locked"] is False
+
+
 def test_wrong_staff_password(client):
     assert client.post("/api/login/staff", json={"password": "nope"}).status_code == 403
 

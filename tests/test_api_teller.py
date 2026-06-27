@@ -46,6 +46,13 @@ def test_session_probe_requires_staff(client):
     assert client.get("/api/teller/session").json()["staff"] is True
 
 
+def test_logout_clears_session(client):
+    _staff(client)
+    assert client.get("/api/teller/session").status_code == 200
+    assert client.post("/api/logout").status_code == 200
+    assert client.get("/api/teller/session").status_code == 403  # cookie cleared
+
+
 def test_op_returns_snapshot_without_relocking(client):
     _staff(client)
     assert client.get("/api/member/0-1").json()["locked"] is False  # starts the visit

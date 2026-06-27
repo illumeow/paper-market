@@ -21,6 +21,7 @@ let eventStart = null;
 let timeScale = 1;   // event-minutes per real-minute; from /api/dashboard (TIME_SCALE)
 const charts = {}; // stock_id -> Chart instance
 const summaryCards = {}; // stock_id -> { priceEl, pctEl }
+const initPrice = {}; // stock_id -> init_price, for the (0, init) chart anchor
 
 // ── Render summary ────────────────────────────────────────
 const summaryGrid = document.getElementById("summary-grid");
@@ -55,7 +56,19 @@ function renderCharts(stocks) {
       <canvas id="chart-${s.stock_id}" height="180"></canvas>`;
     chartsGrid.appendChild(card);
 
+    initPrice[s.stock_id] = s.init_price;
     const points = s.history.map(h => ({ x: minSinceKickoff(h.ts), y: h.price }));
+    // Start the line at (0, init_price): history's first row is the first tick
+    // (x≈0.04), not kickoff, so without this the line floats off the left edge.
+    if (eventStart != null && points.length && points[0].x > 1e-6) {
+      points.unshift({ x: 0, y: s.init_price });
+    }
+    // Anchor the x-axis at kickoff (0) and end it exactly at the latest point so
+    // the line spans the full width — no left margin, no gap before the axis end.
+    // Chart.js otherwise rounds the domain out to "nice" ticks (e.g. 10..30),
+    // which floats the plot in the middle. maxX stays undefined pre-kickoff (no
+    // data) so the axis auto-sizes until the first tick arrives.
+    const maxX = points.length ? points[points.length - 1].x : undefined;
 
     const ctx = document.getElementById(`chart-${s.stock_id}`).getContext("2d");
     charts[s.stock_id] = new Chart(ctx, {
@@ -87,7 +100,20 @@ function renderCharts(stocks) {
         scales: {
           x: {
             type: "linear",
-            ticks: { color: "#8892a4", precision: 0, maxTicksLimit: 8, maxRotation: 0 },
+            min: 0,
+            max: maxX,
+            // Keep max at "now" so the line reaches the right edge, but label only
+            // whole event-minutes: 0,1,…,floor(max). We generate the integer ticks
+            // ourselves so the fractional max (e.g. 5.06) never gets its own label;
+            // step grows to keep the count readable on a long event (≤ ~8 labels).
+            afterBuildTicks: (axis) => {
+              const hi = Math.floor(axis.max || 0);
+              const step = Math.max(1, Math.ceil(hi / 7));
+              const ticks = [];
+              for (let v = 0; v <= hi; v += step) ticks.push({ value: v });
+              axis.ticks = ticks;
+            },
+            ticks: { color: "#8892a4", maxRotation: 0, autoSkip: false },
             grid:  { color: "#2e3350" },
           },
           y: {
@@ -129,7 +155,10 @@ function escapeHtml(s) {
 
 // ── Live price update ─────────────────────────────────────
 function onPrices(updates) {
-  const nowMin = minSinceKickoff(Date.now() / 1000);
+  // x comes from the server's tick `elapsed` (event-minutes), the same basis as
+  // the history points — NOT from the client clock + polled eventStart, which is
+  // null/stale for up to one poll after kickoff and would pile early points at 0.
+  const nowMin = updates.length ? updates[0].elapsed : null;
   for (const u of updates) {
     // Update summary card
     const card = summaryCards[u.stock_id];
@@ -137,11 +166,20 @@ function onPrices(updates) {
 
     // Append to chart
     const chart = charts[u.stock_id];
-    if (chart) {
+    if (chart && nowMin != null) {
       const ds = chart.data.datasets[0].data;
+      // Dashboard opened before kickoff → chart starts empty; anchor the first
+      // live point back to (0, init_price) so the line begins at the left edge.
+      if (ds.length === 0 && initPrice[u.stock_id] != null) {
+        ds.push({ x: 0, y: initPrice[u.stock_id] });
+      }
       ds.push({ x: nowMin, y: u.price });
-      // Keep last 200 points
-      if (ds.length > 200) ds.shift();
+      // Keep enough to span the whole event: ~120min / 5s tick ≈ 1440 points, so
+      // trimming below that would empty the left while min stays pinned at 0.
+      if (ds.length > 2000) ds.shift();
+      // Track the right edge to the newest point so the line always reaches the
+      // axis end (mirrors the min:0 / max:last anchoring set in renderCharts).
+      chart.options.scales.x.max = nowMin;
       chart.update("none");
     }
   }

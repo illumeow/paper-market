@@ -114,6 +114,20 @@ def test_resume_excludes_paused_gap():
     assert elapsed_min(conn, now=now) == 15.0
 
 
+def test_resume_shifts_price_history_ts():
+    """price_history.ts must slide forward with event_start on resume, else the
+    dashboard derives (ts - event_start) wrong and pre-pause points jump left."""
+    conn = _fresh_conn()
+    start = 1_000_000.0
+    set_event_start(conn, start)
+    conn.execute("INSERT INTO price_history(stock_id,ts,price) VALUES('TECH',?,100)", (start + 300,))
+    conn.commit()
+    pause_event(conn, start + 600)          # pause at 10 min
+    resume_event(conn, start + 600 + 180)   # paused 180 s
+    ts = conn.execute("SELECT ts FROM price_history WHERE stock_id='TECH'").fetchone()[0]
+    assert ts == start + 300 + 180          # x = (ts - event_start) preserved across the gap
+
+
 def test_resume_without_pause_is_noop():
     conn = _fresh_conn()
     set_event_start(conn, 1_000_000.0)

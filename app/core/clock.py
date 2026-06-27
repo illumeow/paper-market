@@ -61,6 +61,12 @@ def resume_event(conn, now):
     conn.execute("UPDATE members SET loan_taken_at = loan_taken_at + ? WHERE loan_taken_at IS NOT NULL", (d,))
     conn.execute("UPDATE members SET last_teller_visit_at = last_teller_visit_at + ? WHERE last_teller_visit_at IS NOT NULL", (d,))
     conn.execute("UPDATE fixed_deposits SET created_at = created_at + ? WHERE closed=0", (d,))
+    # Slide history timestamps too: the dashboard derives a point's x from
+    # (ts - event_start), so moving event_start forward by d without moving ts
+    # would shift every pre-pause point left by d on the next page reload. All
+    # rows predate the pause (the ticker is frozen while stopped), so +d keeps
+    # their x put and the chart stays continuous across the gap.
+    conn.execute("UPDATE price_history SET ts = ts + ?", (d,))
     conn.execute("DELETE FROM meta WHERE key='event_paused_at'")
     conn.commit()
 

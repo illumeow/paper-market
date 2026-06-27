@@ -25,6 +25,17 @@ def test_due_event_fires_and_publishes_news():
     assert conn.execute("SELECT COUNT(*) c FROM news WHERE source='event'").fetchone()["c"] >= 1
 
 
+def test_tick_payload_carries_elapsed():
+    # The dashboard plots each live point at the server's tick `elapsed`, not from
+    # its own clock — so every broadcast item must carry it.
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config(); provision.seed(conn, cfg, pins_path="config/pins.csv", now=0.0)
+    updated = events.tick_prices(conn, now=10*60, tuning=cfg.tuning, noise_scale=0.0,
+                                 quarter_min=cfg.quarter_min, tick_min=5/60, rng=__import__("random"))
+    assert updated and all("elapsed" in u for u in updated)
+    assert all(abs(u["elapsed"] - 10.0) < 1e-6 for u in updated)
+
+
 def test_quarter_rollover_resets_band():
     conn = db.connect(":memory:"); db.init_schema(conn)
     cfg = load_config(); provision.seed(conn, cfg, pins_path="config/pins.csv", now=0.0)

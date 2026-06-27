@@ -57,7 +57,14 @@ def tick_prices(conn, now, *, tuning, noise_scale, quarter_min, tick_min, rng):
                           band_ceiling_pct=r.band_ceiling_pct, flow_momentum=r.flow_momentum)
         conn.execute("INSERT INTO price_history(stock_id,ts,price) VALUES(?,?,?)",
                      (s["stock_id"], now, r.price))
-        updated.append({"stock_id": s["stock_id"], "price": r.price})
+        # Carry the server-computed elapsed (event-minutes from kickoff) so the
+        # dashboard plots each live point at the SAME x-basis as its history
+        # (which is derived from server ts). The client must not re-derive x from
+        # its own wall-clock + a separately-polled event_start: that anchor is
+        # null/stale for up to one poll after kickoff, collapsing early points to
+        # x=0 and breaking the chart. `elapsed` already folds in TIME_SCALE and
+        # the pause freeze, so the client needs no clock math at all.
+        updated.append({"stock_id": s["stock_id"], "price": r.price, "elapsed": elapsed})
 
     conn.commit()
     return updated

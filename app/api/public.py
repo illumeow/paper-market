@@ -27,6 +27,7 @@ async def dashboard(request: Request):
                           (s["stock_id"],)).fetchone()["v"]
         pct = (s["price"] / s["init_price"] - 1) * 100 if s["init_price"] else 0
         stocks.append({"stock_id": s["stock_id"], "name": s["name"], "price": s["price"],
+                       "init_price": s["init_price"],
                        "pct_change": round(pct, 2), "volume": vol,
                        "history": [{"ts": h["ts"], "price": h["price"]} for h in hist]})
     news = [dict(n) for n in stock_repo.current_news(conn, limit=10)]

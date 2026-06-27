@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS members(
   member_id TEXT PRIMARY KEY, pin TEXT UNIQUE NOT NULL,
   balance REAL NOT NULL, balance_accrued_at REAL NOT NULL,
   debt REAL NOT NULL DEFAULT 0, loan_taken_at REAL,
-  relief_claimed INTEGER NOT NULL DEFAULT 0, last_teller_visit_at REAL);
+  last_teller_visit_at REAL);
 CREATE TABLE IF NOT EXISTS fixed_deposits(
   fd_id TEXT PRIMARY KEY, member_id TEXT NOT NULL, principal REAL NOT NULL,
   term_minutes INTEGER NOT NULL, rate_per_min REAL NOT NULL, created_at REAL NOT NULL,

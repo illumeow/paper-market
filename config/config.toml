@@ -1,6 +1,5 @@
 [economy]
 start_balance = 1000
-relief_amount = 500
 loan_cap = 5000
 demand_rate = 0.005
 fd_rate_30 = 0.01

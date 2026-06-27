@@ -34,15 +34,6 @@ def withdraw(conn, mid, amount, now, actor):
     repo.add_txn(conn, mid, "withdraw", -amount, now, actor)
 
 
-def claim_relief(conn, mid, now, actor, relief_amount):
-    m = repo.get_member(conn, mid)
-    if m["relief_claimed"]:
-        raise BusinessError("relief already claimed")
-    bal = accrue_balance(conn, mid, now)
-    repo.update_member(conn, mid, balance=bal + relief_amount, relief_claimed=1)
-    repo.add_txn(conn, mid, "relief", relief_amount, now, actor)
-
-
 def loan_disburse(conn, mid, amount, now, actor, loan_cap):
     if amount <= 0 or amount > loan_cap:
         raise BusinessError("invalid loan amount")

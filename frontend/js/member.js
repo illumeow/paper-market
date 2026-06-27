@@ -116,6 +116,7 @@ function onPrices(updates) {
     const el = document.getElementById("price-" + u.stock_id);
     if (el) el.textContent = "$" + money(u.price);
   }
+  refreshMe();
 }
 function onNews(n) {
   toast(n.text, "ok");

@@ -12,6 +12,8 @@ function toast(msg, type = "ok") {
 
 // ── State ───────────────────────────────────────────────
 let prices = {}; // stock_id -> current price (live)
+let heldShares = {};  // stock_id -> shares held
+let marketIds = [];   // stock ids currently rendered, for held-label updates
 
 // ── DOM refs ────────────────────────────────────────────
 const loginSection = document.getElementById("login-section");
@@ -21,7 +23,6 @@ const loginBtn     = document.getElementById("login-btn");
 const midLabel     = document.getElementById("member-id-label");
 const statBalance  = document.getElementById("stat-balance");
 const statDebt     = document.getElementById("stat-debt");
-const holdingsList = document.getElementById("holdings-list");
 const fdList       = document.getElementById("fd-list");
 const marketList   = document.getElementById("market-list");
 
@@ -31,17 +32,10 @@ function renderPortfolio(me) {
   statBalance.textContent = "$" + money(me.balance);
   statDebt.textContent = me.debt > 0 ? "$" + money(me.debt) : "—";
 
-  // holdings
-  if (me.holdings && me.holdings.length > 0) {
-    holdingsList.innerHTML = me.holdings.map(h =>
-      `<div class="row row--between" style="padding:4px 0;border-bottom:1px solid var(--border)">
-        <span class="stock-name">${h.stock_id}</span>
-        <span>${count(h.shares)} shares</span>
-      </div>`
-    ).join("");
-  } else {
-    holdingsList.innerHTML = '<span class="muted">No shares held.</span>';
-  }
+  // Holdings are now shown inline per stock row (see updateHeldDisplays).
+  heldShares = {};
+  (me.holdings || []).forEach(h => { heldShares[h.stock_id] = h.shares; });
+  updateHeldDisplays();
 
   renderFd(me);
 }
@@ -143,6 +137,7 @@ async function closeFd() {
 
 // ── Render market list ──────────────────────────────────
 function renderMarket(market) {
+  marketIds = market.map(s => s.stock_id);
   marketList.innerHTML = "";
   for (const s of market) {
     prices[s.stock_id] = s.price;
@@ -155,12 +150,14 @@ function renderMarket(market) {
         <span class="stock-price" id="price-${s.stock_id}">$${money(s.price)}</span>
       </div>
       <div class="trade-controls">
-        <input type="number" min="1" value="1" id="shares-${s.stock_id}" placeholder="qty" />
+        <span class="muted" id="held-${s.stock_id}" style="margin-right:auto">you hold: 0</span>
+        <input type="text" inputmode="numeric" value="1" id="shares-${s.stock_id}" placeholder="Quantity" />
         <button class="btn btn--success btn--sm" data-sid="${s.stock_id}" data-side="buy">Buy</button>
         <button class="btn btn--danger btn--sm"  data-sid="${s.stock_id}" data-side="sell">Sell</button>
       </div>`;
     marketList.appendChild(div);
   }
+  updateHeldDisplays();
 
   // Trade buttons
   marketList.addEventListener("click", async e => {
@@ -182,6 +179,20 @@ function renderMarket(market) {
       btn.disabled = false;
     }
   });
+
+  // Keep the share inputs digit-only (type=number would accept "1e10", "."): strip non-digits as typed.
+  marketList.addEventListener("input", e => {
+    if (e.target.matches('input[id^="shares-"]')) e.target.value = e.target.value.replace(/\D/g, "");
+  });
+}
+
+// Refresh the per-row "you hold: N" labels from heldShares. Safe to call before
+// the market rows exist (the elements simply aren't found yet).
+function updateHeldDisplays() {
+  for (const sid of marketIds) {
+    const el = document.getElementById("held-" + sid);
+    if (el) el.textContent = "you hold: " + count(heldShares[sid] || 0);
+  }
 }
 
 // ── Live price updates ──────────────────────────────────

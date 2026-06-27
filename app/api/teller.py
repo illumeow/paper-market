@@ -47,12 +47,17 @@ async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
                                      request.app.state.config.economy["cooldown_min"])
     if locked:
         return {"member_id": mid, "locked": True, "cooldown_remaining_sec": int(remaining)}
+    eco = request.app.state.config.economy
     async with MUTATION_LOCK:
         bank_repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
         bal = bank_service.accrue_balance(conn, mid, now)
     return {"member_id": mid, "locked": False, "balance": bal, "debt": m["debt"],
             "relief_claimed": bool(m["relief_claimed"]),
-            "fixed_deposits": [dict(f) for f in bank_repo.open_fds(conn, mid)],
+            "fixed_deposits": [bank_service.fd_public(conn, f, now, demand_rate=eco["demand_rate"])
+                               for f in bank_repo.open_fds(conn, mid)],
+            "fd_options": bank_service.fd_term_options(eco),
+            "elapsed_min": elapsed_min(conn, now),
+            "event_duration_min": eco["event_duration_min"],
             "holdings": [dict(h) for h in stock_repo.list_holdings(conn, mid)]}
 
 
@@ -117,8 +122,8 @@ async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
 async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     async with MUTATION_LOCK:
-        bank_service.fd_close(request.app.state.conn, b["id"], b["fd_id"], time.time(), "teller",
-                              demand_rate=_eco(request)["demand_rate"])
+        bank_service.fd_close_current(request.app.state.conn, b["id"], time.time(), "teller",
+                                      demand_rate=_eco(request)["demand_rate"])
     return {"ok": True}
 
 

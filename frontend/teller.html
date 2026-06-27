@@ -77,10 +77,11 @@
         <div id="m-holdings-list" class="muted">None.</div>
       </div>
 
-      <!-- Fixed Deposits -->
+      <!-- Fixed Deposits (display + open form / close button, built by teller.js) -->
       <div class="card">
         <h2>Fixed Deposits</h2>
         <div id="m-fd-list" class="muted">None.</div>
+        <div id="fd-ops"></div>
       </div>
 
       <!-- Operations -->
@@ -127,33 +128,6 @@
         <div style="margin-bottom:14px">
           <button class="btn btn--primary btn--sm" id="relief-btn">Claim Relief</button>
           <span class="muted" id="relief-note" style="margin-left:8px;font-size:.82rem;"></span>
-        </div>
-      </div>
-
-      <!-- Fixed Deposit Ops -->
-      <div class="card">
-        <h2>Fixed Deposit Operations</h2>
-
-        <div class="section-title">Open FD</div>
-        <div class="ops-grid" style="margin-bottom:14px">
-          <div class="field">
-            <label>Principal</label>
-            <input type="number" min="1" id="fd-principal" placeholder="Amount" />
-          </div>
-          <div class="field">
-            <label>Term (minutes)</label>
-            <input type="number" min="1" id="fd-term" placeholder="e.g. 30" />
-          </div>
-        </div>
-        <button class="btn btn--primary btn--sm" id="fd-open-btn">Open FD</button>
-
-        <div class="section-title" style="margin-top:14px">Close FD</div>
-        <div class="inline-form">
-          <div style="flex:1">
-            <label>FD ID</label>
-            <input type="text" id="fd-close-id" placeholder="fd-id" />
-          </div>
-          <button class="btn btn--danger btn--sm" id="fd-close-btn" style="margin-top:20px">Close FD</button>
         </div>
       </div>
 

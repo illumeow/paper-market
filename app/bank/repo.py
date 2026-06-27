@@ -22,6 +22,10 @@ def open_fds(conn, mid):
     return conn.execute("SELECT * FROM fixed_deposits WHERE member_id=? AND closed=0", (mid,)).fetchall()
 
 
+def all_open_fds(conn):
+    return conn.execute("SELECT * FROM fixed_deposits WHERE closed=0").fetchall()
+
+
 def get_fd(conn, fd_id):
     return conn.execute("SELECT * FROM fixed_deposits WHERE fd_id=?", (fd_id,)).fetchone()
 

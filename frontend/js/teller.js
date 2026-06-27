@@ -1,4 +1,4 @@
-import { api, money, count } from "/js/common.js";
+import { api, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "/js/common.js";
 
 // ── Toast ────────────────────────────────────────────────
 const toastEl = document.getElementById("toast");
@@ -28,6 +28,7 @@ const mDebt           = document.getElementById("m-debt");
 const mReliefStatus   = document.getElementById("m-relief-status");
 const mHoldingsList   = document.getElementById("m-holdings-list");
 const mFdList         = document.getElementById("m-fd-list");
+const fdOps           = document.getElementById("fd-ops");
 const reliefNote      = document.getElementById("relief-note");
 
 // ── Current member state ─────────────────────────────────
@@ -117,22 +118,72 @@ function showUnlocked(data) {
     mHoldingsList.innerHTML = '<span class="muted">No holdings.</span>';
   }
 
-  // FDs
+  renderMemberFd(data);   // the FD card (payout + countdown)
+  renderFdOps(data);      // open form when none, close button when one is open
+}
+
+// ── FD card (read-only details for the looked-up member) ──
+function renderMemberFd(data) {
+  const fd = data.fixed_deposits && data.fixed_deposits[0];
+  if (!fd) { mFdList.innerHTML = ""; return; }  // no FD → the open form (in #fd-ops below) is the content
+  const status = fd.matured
+    ? '<span class="pos">✓ Matured</span>'
+    : `matures in ${Math.max(0, Math.ceil(fd.remaining_min))} min`;
+  mFdList.innerHTML = `<table class="fd-table"><tbody>
+    <tr><td>Principal</td><td>$${money(fd.principal)}</td></tr>
+    <tr><td>Term</td><td>${fd.term_minutes} min · ${ratePct(fd.rate_per_min)}/min</td></tr>
+    <tr><td>Matures to</td><td>$${money(fd.payout)}</td></tr>
+    <tr><td>Status</td><td>${status}</td></tr>
+  </tbody></table>`;
+}
+
+// ── FD operations: open chooser+preview, or a single Close button ──
+function renderFdOps(data) {
   if (data.fixed_deposits && data.fixed_deposits.length > 0) {
-    const rows = data.fixed_deposits.map(f =>
-      `<tr>
-        <td>${f.fd_id}</td>
-        <td>$${money(f.principal)}</td>
-        <td>${f.term_minutes}min</td>
-      </tr>`
-    ).join("");
-    mFdList.innerHTML = `<table class="fd-table">
-      <thead><tr><th>ID</th><th>Principal</th><th>Term</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
-  } else {
-    mFdList.innerHTML = '<span class="muted">No open FDs.</span>';
+    const fd = data.fixed_deposits[0];
+    fdOps.innerHTML = '<div class="fd-actions-right"><button class="btn btn--danger btn--sm" id="fd-close-btn">Close FD</button></div>';
+    document.getElementById("fd-close-btn").addEventListener("click", () => {
+      const back = money(fd.close_value_now);
+      const msg = fd.matured
+        ? `Close matured FD and credit $${back} to the member?`
+        : `Close early now? Member gets back $${back} (early-exit penalty rate).`;
+      if (!window.confirm(msg)) return;
+      tellerOp("/api/teller/fd/close", {}, "FD closed");
+    });
+    return;
   }
+  const opts = (data.fd_options || []).filter(o => data.elapsed_min + o.term <= data.event_duration_min);
+  if (opts.length === 0) {
+    fdOps.innerHTML = '<span class="muted">FD window closed — too close to event end.</span>';
+    return;
+  }
+  fdOps.innerHTML = `
+    <label>Principal</label>
+    <div class="fd-open-row">
+      <input type="number" min="1" id="fd-principal" placeholder="Amount" />
+      ${fdTermSelect(opts)}
+    </div>
+    <div class="fd-open-actions">
+      <span class="muted" id="fd-preview"></span>
+      <button class="btn btn--primary btn--sm" id="fd-open-btn">Open FD</button>
+    </div>`;
+  const principal = document.getElementById("fd-principal");
+  const term      = document.getElementById("fd-term");
+  const preview   = document.getElementById("fd-preview");
+  function updatePreview() {
+    const p = parseFloat(principal.value);
+    preview.textContent = (p >= 1)
+      ? `→ matures to $${money(fdPayout(p, parseInt(term.value, 10), fdTermRate(term)))}`
+      : "";
+  }
+  principal.addEventListener("input", updatePreview);
+  term.addEventListener("change", updatePreview);
+  document.getElementById("fd-open-btn").addEventListener("click", async () => {
+    if (!currentMid) { toast("Lookup a member first", "err"); return; }
+    const p = parseInt(principal.value, 10);
+    if (!p || p < 1) { toast("Enter a principal", "err"); return; }
+    await tellerOp("/api/teller/fd/open", { principal: p, term: parseInt(term.value, 10) }, "FD opened");
+  });
 }
 
 // ── Generic teller op helper ──────────────────────────────
@@ -180,27 +231,7 @@ document.getElementById("relief-btn").addEventListener("click", async () => {
   await tellerOp("/api/teller/relief", {}, "Relief granted");
 });
 
-// ── FD operations ─────────────────────────────────────────
-document.getElementById("fd-open-btn").addEventListener("click", async () => {
-  if (!currentMid) { toast("Lookup a member first", "err"); return; }
-  const principal = parseInt(document.getElementById("fd-principal").value, 10);
-  const term      = parseInt(document.getElementById("fd-term").value, 10);
-  if (!principal || !term) { toast("Enter principal and term", "err"); return; }
-  try {
-    const res = await api("/api/teller/fd/open", "POST", { id: currentMid, principal, term });
-    toast("FD opened: " + res.fd_id, "ok");
-    const data = await api(`/api/member/${encodeURIComponent(currentMid)}`);
-    if (!data.locked) showUnlocked(data);
-  } catch (err) {
-    toast(err.message, "err");
-  }
-});
-
-document.getElementById("fd-close-btn").addEventListener("click", async () => {
-  const fdId = document.getElementById("fd-close-id").value.trim();
-  if (!fdId) { toast("Enter FD ID", "err"); return; }
-  await tellerOp("/api/teller/fd/close", { fd_id: fdId }, "FD closed");
-});
+// FD open/close handlers are wired per-lookup inside renderFdOps (markup is dynamic).
 
 // ── Trade on behalf ───────────────────────────────────────
 async function tradeBehalf(side) {

@@ -13,6 +13,25 @@ export function money(n) {
 export function count(n) {
   return Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
+// Per-minute rate as a percent, trailing zeros trimmed (0.01 → "1%", 0.015 → "1.5%").
+export function ratePct(r) {
+  return +(r * 100).toFixed(4) + "%";
+}
+// FD maturity payout: principal compounded at rate_per_min over the whole term.
+export function fdPayout(principal, term, rate) {
+  return principal * Math.pow(1 + rate, term);
+}
+// Term dropdown (compact, mobile-friendly) — each option carries its rate.
+export function fdTermSelect(opts, id = "fd-term") {
+  const options = opts.map(o =>
+    `<option value="${o.term}" data-rate="${o.rate}">${o.term} min · ${ratePct(o.rate)}/min</option>`
+  ).join("");
+  return `<select id="${id}">${options}</select>`;
+}
+// Per-minute rate of the currently selected term option.
+export function fdTermRate(sel) {
+  return parseFloat(sel.selectedOptions[0].dataset.rate);
+}
 export function stream(onPrices, onNews) {
   const es = new EventSource("/api/stream");
   es.addEventListener("prices", e => onPrices(JSON.parse(e.data)));

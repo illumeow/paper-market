@@ -7,7 +7,7 @@ from app.bank import service as bank_service
 from app.stock import repo as stock_repo
 from app.stock import service as stock_service
 from app.core.auth import pin_hash, make_token, require_member, COOKIE
-from app.core.clock import event_start
+from app.core.clock import event_start, elapsed_min
 from app.core.locks import MUTATION_LOCK
 
 router = APIRouter()
@@ -32,13 +32,38 @@ async def login_member(request: Request):
 @router.get("/api/me")
 async def me(request: Request, mid: str = Depends(require_member)):
     conn = request.app.state.conn
+    eco = request.app.state.config.economy
     now = time.time()
     bal = bank_service.accrue_balance(conn, mid, now)
     m = bank_repo.get_member(conn, mid)
     holdings = [dict(h) for h in stock_repo.list_holdings(conn, mid)]
-    fds = [dict(f) for f in bank_repo.open_fds(conn, mid)]
+    fds = [bank_service.fd_public(conn, f, now, demand_rate=eco["demand_rate"])
+           for f in bank_repo.open_fds(conn, mid)]
     return {"member_id": mid, "balance": bal, "debt": m["debt"],
-            "holdings": holdings, "fixed_deposits": fds}
+            "holdings": holdings, "fixed_deposits": fds,
+            "fd_options": bank_service.fd_term_options(eco),
+            "elapsed_min": elapsed_min(conn, now),
+            "event_duration_min": eco["event_duration_min"]}
+
+
+@router.post("/api/fd/open")
+async def m_fd_open(request: Request, mid: str = Depends(require_member)):
+    b = await request.json()
+    eco = request.app.state.config.economy
+    async with MUTATION_LOCK:
+        bank_service.fd_open(request.app.state.conn, mid, int(b["principal"]), int(b["term"]),
+                             time.time(), "member", demand_rate=eco["demand_rate"],
+                             fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
+                             event_duration_min=eco["event_duration_min"])
+    return {"ok": True}
+
+
+@router.post("/api/fd/close")
+async def m_fd_close(request: Request, mid: str = Depends(require_member)):
+    async with MUTATION_LOCK:
+        bank_service.fd_close_current(request.app.state.conn, mid, time.time(), "member",
+                                      demand_rate=request.app.state.config.economy["demand_rate"])
+    return {"ok": True}
 
 
 @router.get("/api/market")

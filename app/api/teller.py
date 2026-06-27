@@ -6,7 +6,7 @@ from app.bank import service as bank_service
 from app.stock import repo as stock_repo
 from app.stock import service as stock_service
 from app.core.auth import make_token, require_staff, COOKIE
-from app.core.clock import event_start, set_event_start, elapsed_min, accrued_minutes
+from app.core.clock import event_start, set_event_start, elapsed_min, accrued_minutes, time_scale
 from app.core.cooldown import visit_status
 from app.core.networth import member_amount
 from app.core.export_csv import build_csv
@@ -24,6 +24,25 @@ async def login_staff(request: Request):
     resp = JSONResponse({"ok": True})
     resp.set_cookie(COOKIE, tok, httponly=True, samesite="lax")
     return resp
+
+
+@router.get("/api/teller/session")
+async def t_session(_: bool = Depends(require_staff)):
+    # Lightweight probe so the teller page can restore a staff session on reload
+    # (the pm_session cookie is httponly — JS can't read it, must ask the server).
+    return {"staff": True}
+
+
+def _member_snapshot(conn, mid, now):
+    """The unlocked member view returned by lookup. Teller ops return this so the
+    page refreshes from the op's own response — never a re-lookup, which would
+    re-hit the cooldown gate and leave the panel stale."""
+    m = bank_repo.get_member(conn, mid)
+    bal = bank_service.accrue_balance(conn, mid, now)
+    return {"member_id": mid, "locked": False, "balance": bal, "debt": m["debt"],
+            "relief_claimed": bool(m["relief_claimed"]),
+            "fixed_deposits": [dict(f) for f in bank_repo.open_fds(conn, mid)],
+            "holdings": [dict(h) for h in stock_repo.list_holdings(conn, mid)]}
 
 
 @router.post("/api/teller/start")
@@ -44,16 +63,13 @@ async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
         raise HTTPException(404, "no such member")
     now = time.time()
     locked, remaining = visit_status(m["last_teller_visit_at"], now,
-                                     request.app.state.config.economy["cooldown_min"])
+                                     request.app.state.config.economy["cooldown_min"],
+                                     time_scale=time_scale())
     if locked:
         return {"member_id": mid, "locked": True, "cooldown_remaining_sec": int(remaining)}
     async with MUTATION_LOCK:
         bank_repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
-        bal = bank_service.accrue_balance(conn, mid, now)
-    return {"member_id": mid, "locked": False, "balance": bal, "debt": m["debt"],
-            "relief_claimed": bool(m["relief_claimed"]),
-            "fixed_deposits": [dict(f) for f in bank_repo.open_fds(conn, mid)],
-            "holdings": [dict(h) for h in stock_repo.list_holdings(conn, mid)]}
+        return _member_snapshot(conn, mid, now)
 
 
 def _eco(request):
@@ -62,78 +78,77 @@ def _eco(request):
 
 @router.post("/api/teller/deposit")
 async def t_deposit(request: Request, _: bool = Depends(require_staff)):
-    b = await request.json()
+    b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.deposit(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
-    return {"ok": True}
+        bank_service.deposit(conn, b["id"], int(b["amount"]), now, "teller")
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
 
 
 @router.post("/api/teller/withdraw")
 async def t_withdraw(request: Request, _: bool = Depends(require_staff)):
-    b = await request.json()
+    b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.withdraw(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
-    return {"ok": True}
+        bank_service.withdraw(conn, b["id"], int(b["amount"]), now, "teller")
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
 
 
 @router.post("/api/teller/loan")
 async def t_loan(request: Request, _: bool = Depends(require_staff)):
-    b = await request.json()
+    b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.loan_disburse(request.app.state.conn, b["id"], int(b["amount"]), time.time(),
-                                   "teller", _eco(request)["loan_cap"])
-    return {"ok": True}
+        bank_service.loan_disburse(conn, b["id"], int(b["amount"]), now, "teller", _eco(request)["loan_cap"])
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
 
 
 @router.post("/api/teller/repay")
 async def t_repay(request: Request, _: bool = Depends(require_staff)):
-    b = await request.json()
+    b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.loan_repay(request.app.state.conn, b["id"], int(b["amount"]), time.time(), "teller")
-    return {"ok": True}
+        bank_service.loan_repay(conn, b["id"], int(b["amount"]), now, "teller")
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
 
 
 @router.post("/api/teller/relief")
 async def t_relief(request: Request, _: bool = Depends(require_staff)):
-    b = await request.json()
+    b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.claim_relief(request.app.state.conn, b["id"], time.time(), "teller",
-                                  _eco(request)["relief_amount"])
-    return {"ok": True}
+        bank_service.claim_relief(conn, b["id"], now, "teller", _eco(request)["relief_amount"])
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
 
 
 @router.post("/api/teller/fd/open")
 async def t_fd_open(request: Request, _: bool = Depends(require_staff)):
-    b = await request.json(); eco = _eco(request)
+    b = await request.json(); eco = _eco(request); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        fd = bank_service.fd_open(request.app.state.conn, b["id"], int(b["principal"]), int(b["term"]),
-                                  time.time(), "teller", demand_rate=eco["demand_rate"],
+        fd = bank_service.fd_open(conn, b["id"], int(b["principal"]), int(b["term"]),
+                                  now, "teller", demand_rate=eco["demand_rate"],
                                   fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
                                   event_duration_min=eco["event_duration_min"])
-    return {"fd_id": fd}
+        return {"fd_id": fd, "member": _member_snapshot(conn, b["id"], now)}
 
 
 @router.post("/api/teller/fd/close")
 async def t_fd_close(request: Request, _: bool = Depends(require_staff)):
-    b = await request.json()
+    b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.fd_close(request.app.state.conn, b["id"], b["fd_id"], time.time(), "teller",
+        bank_service.fd_close(conn, b["id"], b["fd_id"], now, "teller",
                               demand_rate=_eco(request)["demand_rate"])
-    return {"ok": True}
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now)}
 
 
 @router.post("/api/teller/trade")
 async def t_trade(request: Request, _: bool = Depends(require_staff)):
     if event_start(request.app.state.conn) is None:
         raise HTTPException(409, "event not started")
-    b = await request.json(); cfg = request.app.state.config
+    b = await request.json(); cfg = request.app.state.config; conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        res = stock_service.execute_trade(request.app.state.conn, b["id"], b["stock_id"], b["side"],
-                                          int(b["shares"]), time.time(), "teller",
+        res = stock_service.execute_trade(conn, b["id"], b["stock_id"], b["side"],
+                                          int(b["shares"]), now, "teller",
                                           tuning=cfg.tuning, noise_scale=cfg.tuning.noise_scale)
+        snap = _member_snapshot(conn, b["id"], now)
     await request.app.state.broadcaster.publish({"type": "prices",
         "data": [{"stock_id": b["stock_id"], "price": res["price"]}]})
-    return res
+    return {**res, "member": snap}
 
 
 @router.post("/api/teller/news")

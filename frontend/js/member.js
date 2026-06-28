@@ -1,4 +1,4 @@
-import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "/js/common.js";
+import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "./common.js";
 
 // ── Toast helper ────────────────────────────────────────
 const toastEl = document.getElementById("toast");

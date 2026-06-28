@@ -1,4 +1,4 @@
-import { api, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "/js/common.js";
+import { api, url, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "./common.js";
 
 // ── Toast ────────────────────────────────────────────────
 const toastEl = document.getElementById("toast");
@@ -55,7 +55,7 @@ loginBtn.addEventListener("click", async () => {
 staffPw.addEventListener("keydown", e => { if (e.key === "Enter") loginBtn.click(); });
 
 // ── Export ───────────────────────────────────────────────
-exportBtn.addEventListener("click", () => { window.location = "/api/export"; });
+exportBtn.addEventListener("click", () => { window.location = url("/api/export"); });
 
 // ── Logout ───────────────────────────────────────────────
 document.getElementById("logout-btn").addEventListener("click", async () => {

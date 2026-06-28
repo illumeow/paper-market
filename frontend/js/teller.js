@@ -142,11 +142,11 @@ function showUnlocked(data) {
   const lrNote = document.getElementById("loan-repay-note");
   if (currentDebt > 0) {
     lrBtn.textContent = "Repay";
-    lrBtn.className = "btn btn--neutral btn--sm";
+    lrBtn.className = "btn btn--neutral btn--sm btn--w95 btn--input-h";
     lrNote.textContent = `Owes $${money(currentDebt)} (incl. accrued interest)`;
   } else {
     lrBtn.textContent = "Issue Loan";
-    lrBtn.className = "btn btn--primary btn--sm";
+    lrBtn.className = "btn btn--primary btn--sm btn--w95 btn--input-h";
     lrNote.textContent = "";
   }
 
@@ -174,7 +174,7 @@ function renderMemberFd(data) {
 function renderFdOps(data) {
   if (data.fixed_deposits && data.fixed_deposits.length > 0) {
     const fd = data.fixed_deposits[0];
-    fdOps.innerHTML = '<div class="fd-actions-right"><button class="btn btn--danger btn--sm" id="fd-close-btn">Close FD</button></div>';
+    fdOps.innerHTML = '<div class="fd-actions-right"><button class="btn btn--danger btn--sm btn--w95" id="fd-close-btn">Close FD</button></div>';
     document.getElementById("fd-close-btn").addEventListener("click", () => {
       const back = money(fd.close_value_now);
       const msg = fd.matured
@@ -197,7 +197,7 @@ function renderFdOps(data) {
     </div>
     <div class="fd-open-actions">
       <span class="muted" id="fd-preview"></span>
-      <button class="btn btn--primary btn--sm" id="fd-open-btn">Open FD</button>
+      <button class="btn btn--primary btn--sm btn--w95" id="fd-open-btn">Open FD</button>
     </div>`;
   const principal = document.getElementById("fd-principal");
   const term      = document.getElementById("fd-term");

@@ -373,17 +373,21 @@ stopEventBtn.addEventListener("click", async () => {
 });
 
 // ── Snapshot restore helper ───────────────────────────────
-function restoreSnapshot() {
+// On reload we repaint the last on-screen member instantly from the cached
+// blob, then refresh it from a cooldown-free read so the panel shows LIVE
+// numbers (the cache goes stale across a refresh). The peek never starts a
+// visit, so it can't trip the lookup cooldown.
+async function restoreSnapshot() {
   const saved = sessionStorage.getItem(SNAP_KEY);
-  if (saved) {
-    try {
-      const d = JSON.parse(saved);
-      memberPanel.classList.remove("hidden");
-      showUnlocked(d);
-    } catch (_) {
-      sessionStorage.removeItem(SNAP_KEY);
-    }
-  }
+  if (!saved) return;
+  let d;
+  try { d = JSON.parse(saved); } catch (_) { sessionStorage.removeItem(SNAP_KEY); return; }
+  memberPanel.classList.remove("hidden");
+  showUnlocked(d);  // instant paint from cache
+  try {
+    const fresh = await api(`/api/teller/member/${encodeURIComponent(d.member_id)}/snapshot`);
+    showUnlocked(fresh);  // overwrite with live state
+  } catch (_) { /* keep the cached paint if the peek fails (e.g. member gone) */ }
 }
 
 // ── Cooldown tab-focus fix ────────────────────────────────

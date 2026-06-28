@@ -15,6 +15,8 @@ async def run_ticker(app):
     tick_min = cfg.tick_seconds / 60.0
     tick_sleep = cfg.tick_seconds / _TIME_SCALE
     import random
+    # config band edges per stock — quarter rollover resets to these, not hardcoded ±0.30
+    band_defaults = {s["id"]: (s["band_floor_pct"], s["band_ceiling_pct"]) for s in cfg.stocks}
     while True:
         await asyncio.sleep(tick_sleep)
         now = time.time()
@@ -23,7 +25,7 @@ async def run_ticker(app):
         async with MUTATION_LOCK:
             updated = events.tick_prices(app.state.conn, now, tuning=cfg.tuning,
                                          noise_scale=cfg.tuning.noise_scale, quarter_min=cfg.quarter_min,
-                                         tick_min=tick_min, rng=random)
+                                         tick_min=tick_min, rng=random, band_defaults=band_defaults)
             # settle any FD that reached its term this tick (auto-close → payout to balance)
             bank_service.close_matured_fds(app.state.conn, now, demand_rate=cfg.economy["demand_rate"])
             # publish each news row exactly once, in order, via a server-global cursor

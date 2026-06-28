@@ -106,6 +106,8 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 .btn--neutral  { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 .btn--sm       { padding: 5px 12px; font-size: .82rem; border-radius: 5px; }
 .btn--full     { width: 100%; }
+.btn--w95      { width: 95px; flex: 0 0 auto; }   /* fixed 95px footprint */
+.btn--input-h  { align-self: stretch; margin: 3px 0; }  /* aligned to the input but inset a touch shorter (lighter than the dark input) */
 
 /* ── Toast / alert ─────────────────────────────────────── */
 #toast {

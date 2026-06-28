@@ -16,10 +16,11 @@ let heldShares = {};  // stock_id -> shares held
 let marketIds = [];   // stock ids currently rendered, for held-label updates
 
 // ── DOM refs ────────────────────────────────────────────
-const loginSection = document.getElementById("login-section");
-const appSection   = document.getElementById("app-section");
-const pinInput     = document.getElementById("pin-input");
-const loginBtn     = document.getElementById("login-btn");
+const loginSection  = document.getElementById("login-section");
+const appSection    = document.getElementById("app-section");
+const memberIdInput = document.getElementById("member-id-input");
+const pinInput      = document.getElementById("pin-input");
+const loginBtn      = document.getElementById("login-btn");
 const midLabel     = document.getElementById("member-id-label");
 const statBalance  = document.getElementById("stat-balance");
 const statDebt     = document.getElementById("stat-debt");
@@ -248,6 +249,12 @@ function showApp(me) {
 
 // ── Login ───────────────────────────────────────────────
 loginBtn.addEventListener("click", async () => {
+  const memberId = memberIdInput.value.trim();
+  if (!memberId) {
+    toast("Enter your Member ID", "err");
+    memberIdInput.focus();
+    return;
+  }
   const pin = pinInput.value.trim();
   if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
     toast("PIN must be 4 digits", "err");
@@ -255,7 +262,7 @@ loginBtn.addEventListener("click", async () => {
   }
   loginBtn.disabled = true;
   try {
-    await api("/api/login/member", "POST", { pin });
+    await api("/api/login/member", "POST", { member_id: memberId, pin });
     const me = await api("/api/me");
     showApp(me);
   } catch (err) {
@@ -265,6 +272,10 @@ loginBtn.addEventListener("click", async () => {
   } finally {
     loginBtn.disabled = false;
   }
+});
+
+memberIdInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") loginBtn.click();
 });
 
 pinInput.addEventListener("keydown", e => {

@@ -48,9 +48,8 @@ def _member_snapshot(conn, mid, now, eco):
     page refreshes from the op's own response — never a re-lookup, which would
     re-hit the cooldown gate and leave the panel stale. Carries the enriched FD
     view (payout/remaining/options) so the FD card stays live after every op."""
-    m = bank_repo.get_member(conn, mid)
     bal = bank_service.accrue_balance(conn, mid, now)
-    return {"member_id": mid, "locked": False, "balance": bal, "debt": bank_service.loan_owed_now(conn, m, now),
+    return {"member_id": mid, "locked": False, "balance": bal, "debt": bank_service.loan_owed_now(conn, mid, now),
             "fixed_deposits": [bank_service.fd_public(conn, f, now, demand_rate=eco["demand_rate"])
                                for f in bank_repo.open_fds(conn, mid)],
             "fd_options": bank_service.fd_term_options(eco),

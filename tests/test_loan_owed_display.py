@@ -48,7 +48,7 @@ def test_loan_owed_now_reflects_accrued_interest():
     # Advance 60 event-minutes (TIME_SCALE=1 → 3600 real seconds past event_start)
     now = event_start_epoch + 60 * 60
 
-    owed = bank_service.loan_owed_now(conn, m, now)
+    owed = bank_service.loan_owed_now(conn, "0-1", now)
 
     # Must exceed the raw stored principal
     assert owed > principal, f"Expected owed > {principal}, got {owed}"
@@ -69,8 +69,7 @@ def test_loan_owed_now_zero_when_no_loan():
     )
     conn.commit()
     set_event_start(conn, 0.0)
-    m = bank_repo.get_member(conn, "0-1")
-    assert bank_service.loan_owed_now(conn, m, 3600.0) == 0.0
+    assert bank_service.loan_owed_now(conn, "0-1", 3600.0) == 0.0
 
 
 # ---------------------------------------------------------------------------

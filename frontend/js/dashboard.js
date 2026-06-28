@@ -36,11 +36,12 @@ function renderSummary(stocks) {
       <div class="s-name">${s.name} <span class="muted">${s.stock_id}</span></div>
       <div class="s-price" id="sum-price-${s.stock_id}">$${fmt(s.price)}</div>
       <div class="s-pct ${pctClass}" id="sum-pct-${s.stock_id}">${pctSign}${s.pct_change.toFixed(2)}%</div>
-      <div class="s-vol">Vol: ${s.volume.toLocaleString()}</div>`;
+      <div class="s-vol" id="sum-vol-${s.stock_id}">Vol: ${s.volume.toLocaleString()}</div>`;
     summaryGrid.appendChild(div);
     summaryCards[s.stock_id] = {
       priceEl: div.querySelector(`#sum-price-${s.stock_id}`),
       pctEl:   div.querySelector(`#sum-pct-${s.stock_id}`),
+      volEl:   div.querySelector(`#sum-vol-${s.stock_id}`),
     };
   }
 }
@@ -163,9 +164,18 @@ function onPrices(updates) {
   // null/stale for up to one poll after kickoff and would pile early points at 0.
   const nowMin = updates.length ? updates[0].elapsed : null;
   for (const u of updates) {
-    // Update summary card
+    // Update summary card: price, pct-change (from init_price), and volume
     const card = summaryCards[u.stock_id];
-    if (card) card.priceEl.textContent = "$" + fmt(u.price);
+    if (card) {
+      card.priceEl.textContent = "$" + fmt(u.price);
+      const ip = initPrice[u.stock_id];
+      if (ip) {
+        const pct = (u.price / ip - 1) * 100;
+        card.pctEl.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
+        card.pctEl.className = "s-pct " + (pct >= 0 ? "pos" : "neg");
+      }
+      if (u.volume != null) card.volEl.textContent = "Vol: " + u.volume.toLocaleString();
+    }
 
     // Append to chart
     const chart = charts[u.stock_id];

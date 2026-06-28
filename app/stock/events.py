@@ -14,7 +14,7 @@ def event_drift_for(stock_id, active_events, tick_min):
     return drift, dom_pct
 
 
-def tick_prices(conn, now, *, tuning, noise_scale, quarter_min, tick_min, rng):
+def tick_prices(conn, now, *, tuning, noise_scale, quarter_min, tick_min, rng, band_defaults):
     elapsed = elapsed_min(conn, now)
 
     # Fire due events
@@ -31,10 +31,11 @@ def tick_prices(conn, now, *, tuning, noise_scale, quarter_min, tick_min, rng):
     if q > last_q:
         for s in repo.all_stocks(conn):
             s = dict(s)
+            bf, bc = band_defaults[s["stock_id"]]
             repo.update_stock(conn, s["stock_id"],
                               quarter_open_price=s["price"],
-                              band_floor_pct=-0.30,
-                              band_ceiling_pct=0.30)
+                              band_floor_pct=bf,
+                              band_ceiling_pct=bc)
         conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES('last_quarter',?)", (str(q),))
 
     # Compute active events AFTER potential rollover
@@ -64,7 +65,9 @@ def tick_prices(conn, now, *, tuning, noise_scale, quarter_min, tick_min, rng):
         # null/stale for up to one poll after kickoff, collapsing early points to
         # x=0 and breaking the chart. `elapsed` already folds in TIME_SCALE and
         # the pause freeze, so the client needs no clock math at all.
-        updated.append({"stock_id": s["stock_id"], "price": r.price, "elapsed": elapsed})
+        vol = conn.execute("SELECT COALESCE(SUM(shares),0) v FROM trades WHERE stock_id=?",
+                           (s["stock_id"],)).fetchone()["v"]
+        updated.append({"stock_id": s["stock_id"], "price": r.price, "elapsed": elapsed, "volume": vol})
 
     conn.commit()
     return updated

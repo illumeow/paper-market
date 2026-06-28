@@ -2,8 +2,9 @@ import os
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.core.config import load_config
 from app.core.errors import BusinessError
 from app.core import db
@@ -14,6 +15,20 @@ from app.stock.ticker import run_ticker
 from app.api.member import router as member_router
 from app.api.teller import router as teller_router
 from app.api.public import router as public_router
+
+
+class CleanStaticFiles(StaticFiles):
+    async def get_response(self, path, scope):
+        # Pages are served extensionless only; block direct .html so there is one canonical URL.
+        if path.endswith(".html"):
+            return PlainTextResponse("Not Found", status_code=404)
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and "." not in path.rsplit("/", 1)[-1]:
+                # extensionless page -> serve the matching .html file
+                return await super().get_response(path + ".html", scope)
+            raise
 
 
 def create_app():
@@ -58,8 +73,8 @@ def create_app():
     if os.path.isdir("frontend"):
         @app.get(base + "/")
         async def _root():
-            return RedirectResponse(base + "/dashboard.html")
-        app.mount(base or "/", StaticFiles(directory="frontend", html=True), name="static")
+            return RedirectResponse(base + "/dashboard")
+        app.mount(base or "/", CleanStaticFiles(directory="frontend", html=True), name="static")
     return app
 
 

@@ -45,7 +45,7 @@ def test_prefixed_root_redirect(tmp_path, monkeypatch):
     client = _make_client(tmp_path, monkeypatch, "/paper-market")
     r = client.get("/paper-market/")
     assert r.status_code in (307, 308)
-    assert r.headers["location"].endswith("/paper-market/dashboard.html")
+    assert r.headers["location"].endswith("/paper-market/dashboard")
 
 
 def test_unprefixed_api_dashboard(tmp_path, monkeypatch):

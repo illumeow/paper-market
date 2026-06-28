@@ -68,7 +68,7 @@ input, select {
   transition: border-color .15s;
 }
 input:focus, select:focus { border-color: var(--accent); }
-input[type=number] { -moz-appearance: textfield; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 input[type=number]::-webkit-inner-spin-button { display: none; }
 /* Teller trade-on-behalf stock select: drop native chrome so its height matches
    the adjacent <input> (full width, unlike the compact fd-open-row select). */

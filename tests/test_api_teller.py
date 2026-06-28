@@ -168,7 +168,7 @@ def test_teller_trade_blocked_before_start(client):
 def test_root_redirects_to_dashboard(client):
     r = client.get("/", follow_redirects=False)
     assert r.status_code in (302, 307)
-    assert r.headers["location"] == "/dashboard.html"
+    assert r.headers["location"] == "/dashboard"
 
 
 def test_dashboard_exposes_event_start(client):
@@ -188,3 +188,13 @@ def test_dashboard_exposes_event_start(client):
     assert dash["event_start"] is not None
     assert isinstance(dash["event_start"], float)
     assert abs(dash["event_start"] - since) < 1.0
+
+
+def test_clean_urls_serve_html_and_block_dot_html(client):
+    # Extensionless page serves the .html content; direct .html is 404 (one canonical URL).
+    ok = client.get("/member")
+    assert ok.status_code == 200 and "text/html" in ok.headers["content-type"]
+    assert client.get("/member.html").status_code == 404
+    assert client.get("/dashboard").status_code == 200
+    assert client.get("/teller").status_code == 200
+    assert client.get("/css/app.css").status_code == 200

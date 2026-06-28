@@ -1,7 +1,7 @@
-# nginx pass-through for paper-market under /paper-market/ (host port 26223 from docker-compose).
+# nginx pass-through for paper-market under /paper-market (host port 26223 from docker-compose).
 # The app serves the /paper-market prefix itself (BASE_PATH), so DO NOT strip it:
 # proxy_pass has no trailing slash/path.
-location /paper-market/ {
+location /paper-market {
     proxy_pass http://127.0.0.1:26223;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;

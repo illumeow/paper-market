@@ -5,6 +5,7 @@ services:
       - DB_PATH=/data/paper.db
       - STAFF_PASSWORD=${STAFF_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
+      - BASE_PATH=${BASE_PATH}
     volumes:
       - ./data:/data
       - ./config:/srv/config:ro

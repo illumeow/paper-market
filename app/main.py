@@ -51,14 +51,15 @@ def create_app():
     app.state.rate_limiter = RateLimiter(max_per_min=5)
     # ticker broadcasts news rows newer than this cursor (so pre-existing rows aren't re-blasted)
     app.state.last_news_id = stock_repo.latest_news_id(conn)
-    app.include_router(member_router)
-    app.include_router(teller_router)
-    app.include_router(public_router)
+    base = os.environ.get("BASE_PATH", "").rstrip("/")   # e.g. "/paper-market"; "" for local
+    app.include_router(member_router, prefix=base)
+    app.include_router(teller_router, prefix=base)
+    app.include_router(public_router, prefix=base)
     if os.path.isdir("frontend"):
-        @app.get("/")
+        @app.get(base + "/")
         async def _root():
-            return RedirectResponse("/dashboard.html")
-        app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
+            return RedirectResponse(base + "/dashboard.html")
+        app.mount(base or "/", StaticFiles(directory="frontend", html=True), name="static")
     return app
 
 

@@ -1,7 +1,12 @@
+// This module is served at <BASE>/js/common.js. Derive <BASE> ("" locally, "/paper-market"
+// behind a sub-path proxy) so every absolute API path resolves under the deploy prefix.
+const BASE = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+export const url = (path) => BASE + path;
+
 export async function api(path, method = "GET", body) {
   const opt = { method, headers: { "Content-Type": "application/json" } };
   if (body) opt.body = JSON.stringify(body);
-  const r = await fetch(path, opt);
+  const r = await fetch(BASE + path, opt);
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
   return r.headers.get("content-type")?.includes("json") ? r.json() : r.text();
 }
@@ -33,7 +38,7 @@ export function fdTermRate(sel) {
   return parseFloat(sel.selectedOptions[0].dataset.rate);
 }
 export function stream(onPrices, onNews) {
-  const es = new EventSource("/api/stream");
+  const es = new EventSource(BASE + "/api/stream");
   es.addEventListener("prices", e => onPrices(JSON.parse(e.data)));
   es.addEventListener("news", e => onNews(JSON.parse(e.data)));
   return es;

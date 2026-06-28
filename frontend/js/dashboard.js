@@ -1,4 +1,4 @@
-import { api, stream, money as fmt } from "/js/common.js";
+import { api, stream, money as fmt } from "./common.js";
 
 // ── Toast ────────────────────────────────────────────────
 const toastEl = document.getElementById("toast");

@@ -104,11 +104,14 @@ function renderCharts(stocks) {
             max: maxX,
             // Keep max at "now" so the line reaches the right edge, but label only
             // whole event-minutes: 0,1,…,floor(max). We generate the integer ticks
-            // ourselves so the fractional max (e.g. 5.06) never gets its own label;
-            // step grows to keep the count readable on a long event (≤ ~8 labels).
+            // ourselves so the fractional max (e.g. 5.06) never gets its own label.
+            // step snaps to a nice minute value (1,2,5,10,15,20,30,60,…) — the
+            // smallest that keeps ≤ 8 gaps (≤ ~9 labels), e.g. a 120-min event → 15.
             afterBuildTicks: (axis) => {
               const hi = Math.floor(axis.max || 0);
-              const step = Math.max(1, Math.ceil(hi / 7));
+              const NICE = [1, 2, 5, 10, 15, 20, 30, 60, 120, 240];
+              let step = NICE[NICE.length - 1];
+              for (const s of NICE) { if (Math.floor(hi / s) <= 8) { step = s; break; } }
               const ticks = [];
               for (let v = 0; v <= hi; v += step) ticks.push({ value: v });
               axis.ticks = ticks;

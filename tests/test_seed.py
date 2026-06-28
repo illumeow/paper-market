@@ -56,9 +56,9 @@ def test_seed_members_stocks_idempotent(tmp_path):
     provision.seed(conn, cfg, pins_path=str(pins), now=2000.0)  # idempotent
     assert conn.execute("SELECT COUNT(*) c FROM members").fetchone()["c"] == 120
     assert conn.execute("SELECT COUNT(*) c FROM stocks").fetchone()["c"] == 5
-    # Round-trip assertion: member 0-1 has PIN "1001", verify it hashed and reverse lookup works
+    # Provision hashes PINs: member 0-1 has PIN "1001", stored as its sha256 hash.
     expected = hashlib.sha256(b"1001").hexdigest()
-    assert bank_repo.get_member_by_pinhash(conn, expected)["member_id"] == "0-1"
+    assert bank_repo.get_member(conn, "0-1")["pin"] == expected
     # event start fixed on first seed
     assert event_start(conn) == 1000.0
 

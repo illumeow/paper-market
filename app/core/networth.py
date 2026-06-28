@@ -3,7 +3,7 @@ from app.bank.interest import fd_accrued, loan_owed
 from app.core.money import _int
 
 
-def member_amount(*, balance, open_fds, holdings, prices, debt, loan_elapsed_min) -> int:
+def member_networth(*, balance, open_fds, holdings, prices, debt, loan_elapsed_min) -> int:
     # The ONE place money rounds to whole units: the export/scoreboard boundary.
     # Cash, debt, FD value and positions are all carried full-precision until here.
     total = Decimal(str(balance))

@@ -1,8 +1,8 @@
-from app.core.networth import member_amount
+from app.core.networth import member_networth
 
 
 def test_amount_combines_all_parts():
-    amt = member_amount(
+    amt = member_networth(
         balance=1000,
         # open FD valued at its FD-rate accrual to now: 1000*1.01^10 ≈ 1104.62
         open_fds=[{"principal": 1000, "term_minutes": 30, "rate_per_min": 0.01, "elapsed_min": 10}],
@@ -16,7 +16,7 @@ def test_amount_combines_all_parts():
 
 def test_open_fd_accrual_caps_at_term():
     # elapsed past term must not over-accrue: caps at the full-term value.
-    amt = member_amount(
+    amt = member_networth(
         balance=0,
         open_fds=[{"principal": 1000, "term_minutes": 30, "rate_per_min": 0.01, "elapsed_min": 100}],
         holdings=[], prices={}, debt=0, loan_elapsed_min=0,
@@ -25,5 +25,5 @@ def test_open_fd_accrual_caps_at_term():
 
 
 def test_no_debt_no_fd():
-    assert member_amount(balance=500, open_fds=[], holdings=[], prices={},
+    assert member_networth(balance=500, open_fds=[], holdings=[], prices={},
                          debt=0, loan_elapsed_min=0) == 500

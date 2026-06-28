@@ -25,7 +25,9 @@ init_price = 100
 floor = 30
 ceiling = 300
 pressure_normalizer = 1000
-market_share_baseline = 3000
+market_share_baseline = 0
+band_floor_pct = -0.30
+band_ceiling_pct = 0.30
 [[stocks]]
 id = "BANK"
 name = "BankCorp"
@@ -33,7 +35,9 @@ init_price = 80
 floor = 24
 ceiling = 240
 pressure_normalizer = 1000
-market_share_baseline = 3000
+market_share_baseline = 0
+band_floor_pct = -0.30
+band_ceiling_pct = 0.30
 [[stocks]]
 id = "ENGY"
 name = "EnergyX"
@@ -41,7 +45,9 @@ init_price = 120
 floor = 36
 ceiling = 360
 pressure_normalizer = 1000
-market_share_baseline = 3000
+market_share_baseline = 0
+band_floor_pct = -0.30
+band_ceiling_pct = 0.30
 [[stocks]]
 id = "FOOD"
 name = "FoodInc"
@@ -49,7 +55,9 @@ init_price = 50
 floor = 15
 ceiling = 150
 pressure_normalizer = 1000
-market_share_baseline = 3000
+market_share_baseline = 0
+band_floor_pct = -0.30
+band_ceiling_pct = 0.30
 [[stocks]]
 id = "MEDIA"
 name = "MediaPlus"
@@ -57,7 +65,9 @@ init_price = 150
 floor = 45
 ceiling = 450
 pressure_normalizer = 1000
-market_share_baseline = 3000
+market_share_baseline = 0
+band_floor_pct = -0.30
+band_ceiling_pct = 0.30
 
 # Example event (edit/extend for the real schedule):
 [[events]]

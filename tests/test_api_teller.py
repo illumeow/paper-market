@@ -26,6 +26,7 @@ def _staff(client):
 
 def test_staff_deposit_then_export(client):
     _staff(client)
+    client.post("/api/teller/start")  # banking is gated until kickoff
     assert client.get("/api/member/0-1").json()["locked"] is False
     client.post("/api/teller/deposit", json={"id": "0-1", "amount": 250})
     r = client.get("/api/export")
@@ -55,6 +56,7 @@ def test_logout_clears_session(client):
 
 def test_op_returns_snapshot_without_relocking(client):
     _staff(client)
+    client.post("/api/teller/start")  # banking is gated until kickoff
     assert client.get("/api/member/0-1").json()["locked"] is False  # starts the visit
     # The op returns a fresh, unlocked snapshot — no re-lookup needed, so the
     # cooldown started by the lookup never blocks the post-op refresh.
@@ -135,15 +137,19 @@ def test_banking_ops_blocked_when_paused(client):
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
 
 
-def test_banking_allowed_before_kickoff(client):
-    # pre-kickoff is not "paused" — setup banking must still work
+def test_banking_blocked_before_kickoff(client):
+    # pre-kickoff mirrors paused: every state mutation is frozen until Start.
     _staff(client)
+    r = client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100})
+    assert r.status_code == 409 and r.json()["detail"] == "event not started"
+    client.post("/api/teller/start")
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
 
 
 def test_business_error_returns_400_with_message(client):
     # A domain rejection surfaces as 400 + detail (frontend toasts it), not a 500.
     _staff(client)
+    client.post("/api/teller/start")  # past the pre-kickoff gate so business logic runs
     r = client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 999999})
     assert r.status_code == 400
     assert r.json()["detail"] == "insufficient balance"

@@ -27,8 +27,17 @@ def _member(client, mid):
     client.cookies.set(COOKIE, make_token("k", "member", mid))
 
 
+def _start(client):
+    # FD ops are gated until kickoff; anchor the clock at now so elapsed ~0 and
+    # the term/remaining assertions below still hold.
+    import time
+    from app.core.clock import set_event_start
+    set_event_start(client.app.state.conn, time.time())
+
+
 def test_me_exposes_options_and_enriched_fd(client):
     _member(client, "0-1")
+    _start(client)
     me = client.get("/api/me").json()
     assert [o["term"] for o in me["fd_options"]] == [30, 60]
     assert me["fixed_deposits"] == []
@@ -46,6 +55,7 @@ def test_me_exposes_options_and_enriched_fd(client):
 
 def test_member_limited_to_one_fd(client):
     _member(client, "0-2")
+    _start(client)
     assert client.post("/api/fd/open", json={"principal": 500, "term": 30}).status_code == 200
     r = client.post("/api/fd/open", json={"principal": 200, "term": 60})
     assert r.status_code == 400
@@ -54,6 +64,7 @@ def test_member_limited_to_one_fd(client):
 
 def test_member_can_close_own_fd(client):
     _member(client, "0-4")
+    _start(client)
     assert client.post("/api/fd/open", json={"principal": 500, "term": 30}).status_code == 200
     assert client.post("/api/fd/close").status_code == 200
     assert client.get("/api/me").json()["fixed_deposits"] == []
@@ -62,6 +73,7 @@ def test_member_can_close_own_fd(client):
 
 def test_teller_close_by_member_no_fd_id(client):
     _staff(client)
+    client.post("/api/teller/start")  # FD ops gated until kickoff
     assert client.post("/api/teller/fd/open",
                        json={"id": "0-3", "principal": 1000, "term": 30}).status_code == 200
     assert client.post("/api/teller/fd/close", json={"id": "0-3"}).status_code == 200  # no fd_id

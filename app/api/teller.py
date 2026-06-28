@@ -9,7 +9,7 @@ from app.core.auth import make_token, require_staff, COOKIE
 from app.core.clock import (event_start, set_event_start, elapsed_min, accrued_minutes, time_scale,
                             is_paused, pause_event, resume_event)
 from app.core.cooldown import visit_status
-from app.core.networth import member_amount
+from app.core.networth import member_networth
 from app.core.export_csv import build_csv
 from app.core.locks import MUTATION_LOCK
 
@@ -200,8 +200,8 @@ async def export(request: Request, _: bool = Depends(require_staff)):
                    for f in bank_repo.open_fds(conn, mid)]
             holds = [{"stock_id": h["stock_id"], "shares": h["shares"]} for h in stock_repo.list_holdings(conn, mid)]
             le = accrued_minutes(conn, m["loan_taken_at"], now)
-            amounts[mid] = member_amount(balance=bal, open_fds=fds, holdings=holds,
-                                         prices=prices, debt=m["debt"], loan_elapsed_min=le)
+            amounts[mid] = member_networth(balance=bal, open_fds=fds, holdings=holds,
+                                           prices=prices, debt=m["debt"], loan_elapsed_min=le)
     csv_text = build_csv(amounts)
     return Response(csv_text, media_type="text/csv",
                     headers={"Content-Disposition": "attachment; filename=paper-market.csv"})

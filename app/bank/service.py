@@ -68,7 +68,7 @@ def loan_owed_now(conn, mid, now) -> float:
     rate over event-time elapsed since loan_taken_at. Read-only (no anchor
     re-stamp). 0.0 when no loan. Self-fetches the member like the other
     (conn, mid, now) service functions. Matches what loan_repay charges and what
-    networth.member_amount counts against net worth, so displayed debt equals
+    networth.member_networth counts against net worth, so displayed debt equals
     the real owed."""
     m = repo.get_member(conn, mid)
     if m["debt"] <= 0:

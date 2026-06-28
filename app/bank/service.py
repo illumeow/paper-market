@@ -63,13 +63,14 @@ def loan_repay(conn, mid, amount, now, actor):
     repo.add_txn(conn, mid, "loan_repay", -pay, now, actor)
 
 
-def loan_owed_now(conn, m, now) -> float:
+def loan_owed_now(conn, mid, now) -> float:
     """Live amount owed on a member's loan: stored debt compounded at the loan
     rate over event-time elapsed since loan_taken_at. Read-only (no anchor
-    re-stamp) — mirrors fd_public deriving a payout. 0.0 when no loan. The repay
-    path (loan_repay) and the scoreboard (networth.member_amount) compute owed
-    the same way, so this display value matches what a repay would charge and
-    what export counts against net worth."""
+    re-stamp). 0.0 when no loan. Self-fetches the member like the other
+    (conn, mid, now) service functions. Matches what loan_repay charges and what
+    networth.member_amount counts against net worth, so displayed debt equals
+    the real owed."""
+    m = repo.get_member(conn, mid)
     if m["debt"] <= 0:
         return 0.0
     elapsed = accrued_minutes(conn, m["loan_taken_at"], now)

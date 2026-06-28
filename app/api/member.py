@@ -34,12 +34,11 @@ async def me(request: Request, mid: str = Depends(require_member)):
     conn = request.app.state.conn
     eco = request.app.state.config.economy
     now = time.time()
-    bal = bank_service.accrue_balance(conn, mid, now)
-    m = bank_repo.get_member(conn, mid)
     holdings = [dict(h) for h in stock_repo.list_holdings(conn, mid)]
     fds = [bank_service.fd_public(conn, f, now, demand_rate=eco["demand_rate"])
            for f in bank_repo.open_fds(conn, mid)]
-    return {"member_id": mid, "balance": bal, "debt": bank_service.loan_owed_now(conn, m, now),
+    return {"member_id": mid, "balance": bank_service.accrue_balance(conn, mid, now),
+            "debt": bank_service.loan_owed_now(conn, mid, now),
             "holdings": holdings, "fixed_deposits": fds,
             "fd_options": bank_service.fd_term_options(eco),
             "elapsed_min": elapsed_min(conn, now),

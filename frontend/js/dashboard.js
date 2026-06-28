@@ -117,7 +117,7 @@ function renderCharts(stocks) {
             grid:  { color: "#2e3350" },
           },
           y: {
-            ticks: { color: "#8892a4", callback: v => fmt(v) },
+            ticks: { color: "#8892a4", callback: v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
             grid:  { color: "#2e3350" },
           },
         },

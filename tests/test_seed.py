@@ -63,8 +63,8 @@ def test_seed_members_stocks_idempotent(tmp_path):
     assert event_start(conn) == 1000.0
 
 
-def test_provision_sets_total_market_shares_to_market_share_baseline(tmp_path):
-    """Freshly provisioned stocks must have total_market_shares == market_share_baseline so supply_pressure is 0."""
+def test_provision_sets_total_market_shares_to_zero(tmp_path):
+    """Freshly provisioned stocks start with total_market_shares == 0 (no shares traded yet)."""
     pins = tmp_path / "pins.csv"
     pins.write_text("member_id,pin\n" + "".join(f"{g}-{i},{1000+g*12+i}\n"
                     for g in range(10) for i in range(1, 13)))
@@ -72,12 +72,10 @@ def test_provision_sets_total_market_shares_to_market_share_baseline(tmp_path):
     cfg = load_config()
     provision.provision(conn, cfg, pins_path=str(pins), now=1000.0)
     for s in cfg.stocks:
-        row = conn.execute("SELECT market_share_baseline, total_market_shares FROM stocks WHERE stock_id=?",
+        row = conn.execute("SELECT total_market_shares FROM stocks WHERE stock_id=?",
                            (s["id"],)).fetchone()
-        assert row["total_market_shares"] == s["market_share_baseline"], (
-            f"{s['id']}: expected total_market_shares={s['market_share_baseline']}, got {row['total_market_shares']}")
-        # supply_pressure = -reversion_strength * (total_market_shares - market_share_baseline) / pressure_normalizer == 0
-        assert row["total_market_shares"] - row["market_share_baseline"] == 0
+        assert row["total_market_shares"] == 0, (
+            f"{s['id']}: expected total_market_shares=0, got {row['total_market_shares']}")
 
 
 def test_add_news_round_trips_columns():

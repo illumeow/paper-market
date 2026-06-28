@@ -25,9 +25,9 @@ def provision(conn, config, pins_path="config/pins.csv", now=None):
                 "init_price,total_market_shares) "
                 "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
                 (s["id"], s["name"], float(s["init_price"]), float(s["init_price"]),
-                 -0.30, 0.30, float(s["floor"]), float(s["ceiling"]),
+                 s["band_floor_pct"], s["band_ceiling_pct"], float(s["floor"]), float(s["ceiling"]),
                  s["pressure_normalizer"], s["market_share_baseline"],
-                 float(s["init_price"]), s["market_share_baseline"]))
+                 float(s["init_price"]), 0))
     if conn.execute("SELECT COUNT(*) c FROM events").fetchone()["c"] == 0:
         for e in config.events:
             conn.execute("INSERT INTO events(at_min,stock_id,pct,duration_min,headline) "

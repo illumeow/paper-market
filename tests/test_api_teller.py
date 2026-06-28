@@ -190,6 +190,29 @@ def test_dashboard_exposes_event_start(client):
     assert abs(dash["event_start"] - since) < 1.0
 
 
+def test_member_snapshot_is_cooldown_free_read(client):
+    # The teller-page refresh path: a read that reflects live state, never locks,
+    # is repeatable, and does not consume a cooldown visit.
+    _staff(client)
+    client.post("/api/teller/start")  # so banking ops past the require_running gate
+    # repeatable, never locked
+    s1 = client.get("/api/teller/member/0-1/snapshot")
+    assert s1.status_code == 200 and s1.json()["locked"] is False
+    s2 = client.get("/api/teller/member/0-1/snapshot")
+    assert s2.status_code == 200 and s2.json()["locked"] is False
+    # reflects a mutation done via a teller op
+    client.post("/api/teller/deposit", json={"id": "0-1", "amount": 250})
+    assert client.get("/api/teller/member/0-1/snapshot").json()["balance"] >= 250
+    # peeking must NOT start a visit: a real lookup afterwards is still unlocked
+    assert client.get("/api/member/0-1").json()["locked"] is False
+    # unknown member -> 404
+    assert client.get("/api/teller/member/9-99/snapshot").status_code == 404
+
+
+def test_member_snapshot_requires_staff(client):
+    assert client.get("/api/teller/member/0-1/snapshot").status_code == 403
+
+
 def test_clean_urls_serve_html_and_block_dot_html(client):
     # Extensionless page serves the .html content; direct .html is 404 (one canonical URL).
     ok = client.get("/member")

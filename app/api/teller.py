@@ -95,6 +95,21 @@ async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
         return _member_snapshot(conn, mid, now, eco)
 
 
+@router.get("/api/teller/member/{mid}/snapshot")
+async def member_snapshot(request: Request, mid: str, _: bool = Depends(require_staff)):
+    # Cooldown-free read of the member's CURRENT state, used to refresh an on-screen
+    # visit after a page reload — WITHOUT starting a new visit or tripping the lookup
+    # cooldown. Mutates via lazy accrual (accrue_balance persists), so it takes the
+    # lock like lookup does; it deliberately does NOT touch last_teller_visit_at.
+    conn = request.app.state.conn
+    m = bank_repo.get_member(conn, mid)
+    if not m:
+        raise HTTPException(404, "no such member")
+    now = time.time()
+    async with MUTATION_LOCK:
+        return _member_snapshot(conn, mid, now, _eco(request))
+
+
 def _eco(request):
     return request.app.state.config.economy
 

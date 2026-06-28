@@ -8,21 +8,13 @@ from app.stock import service as stock_service
 from app.core.auth import make_token, require_staff, COOKIE
 from app.core.clock import (event_start, set_event_start, elapsed_min, accrued_minutes, time_scale,
                             is_paused, pause_event, resume_event)
+from app.api.deps import require_running
 from app.core.cooldown import visit_status
 from app.core.networth import member_networth
 from app.core.export_csv import build_csv
 from app.core.locks import MUTATION_LOCK
 
 router = APIRouter()
-
-
-def require_running(request: Request):
-    # State mutations freeze while the event is stopped (paused) — this keeps
-    # accrual anchors out of the paused gap. Pre-kickoff is not "paused", so
-    # banking setup before the event still works. Reads/export stay open.
-    if is_paused(request.app.state.conn):
-        raise HTTPException(409, "event paused")
-    return True
 
 
 @router.post("/api/login/staff")
@@ -159,11 +151,7 @@ async def t_fd_close(request: Request, _: bool = Depends(require_staff), __: boo
 
 
 @router.post("/api/teller/trade")
-async def t_trade(request: Request, _: bool = Depends(require_staff)):
-    if event_start(request.app.state.conn) is None:
-        raise HTTPException(409, "event not started")
-    if is_paused(request.app.state.conn):
-        raise HTTPException(409, "event paused")
+async def t_trade(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); cfg = request.app.state.config; conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
         res = stock_service.execute_trade(conn, b["id"], b["stock_id"], b["side"],

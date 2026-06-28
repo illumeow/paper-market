@@ -19,10 +19,10 @@ def client(tmp_path, monkeypatch):
     return TestClient(create_app())
 
 
-def _login_member(client, pin):  # pin from config/pins.csv first row
+def _login_member(client, pin):  # member_id + pin from config/pins.csv first row
     import csv
-    pin = next(csv.DictReader(open("config/pins.csv")))["pin"]
-    r = client.post("/api/login/member", json={"pin": pin})
+    row = next(csv.DictReader(open("config/pins.csv")))
+    r = client.post("/api/login/member", json={"member_id": row["member_id"], "pin": row["pin"]})
     assert r.status_code == 200
     return r.json()["member_id"]
 
@@ -35,7 +35,10 @@ def test_member_login_and_me(client):
 
 
 def test_bad_pin_rejected(client):
-    assert client.post("/api/login/member", json={"pin": "999999"}).status_code in (401, 429)
+    # valid member_id with wrong pin
+    assert client.post("/api/login/member", json={"member_id": "0-1", "pin": "9999"}).status_code in (401, 429)
+    # unknown member_id is also rejected
+    assert client.post("/api/login/member", json={"member_id": "9-99", "pin": "1234"}).status_code in (401, 429)
 
 
 def test_member_cannot_access_teller(client):

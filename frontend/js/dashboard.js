@@ -23,111 +23,111 @@ const charts = {}; // stock_id -> Chart instance
 const summaryCards = {}; // stock_id -> { priceEl, pctEl }
 const initPrice = {}; // stock_id -> init_price, for the (0, init) chart anchor
 
-// ── Render summary ────────────────────────────────────────
-const summaryGrid = document.getElementById("summary-grid");
-function renderSummary(stocks) {
-  summaryGrid.innerHTML = "";
+// ── Render fused tiles (price + pct + vol + chart per stock) ─
+const tilesGrid = document.getElementById("tiles-grid");
+function renderTiles(stocks) {
+  // Build-once: each tile owns a Chart instance that SSE appends live points to.
+  // Re-running this would recreate the Chart and wipe those points, so load()
+  // is the only caller; pollDashboard refreshes numbers via updateCards instead.
+  tilesGrid.innerHTML = "";
   for (const s of stocks) {
     const pctClass = s.pct_change >= 0 ? "pos" : "neg";
     const pctSign  = s.pct_change >= 0 ? "+" : "";
-    const div = document.createElement("div");
-    div.className = "summary-card";
-    div.innerHTML = `
-      <div class="s-name">${s.name} <span class="muted">${s.stock_id}</span></div>
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.innerHTML = `
+      <div class="t-head">
+        <span class="s-name">${s.name} <span class="muted">${s.stock_id}</span></span>
+        <span class="s-pct ${pctClass}" id="sum-pct-${s.stock_id}">${pctSign}${s.pct_change.toFixed(2)}%</span>
+      </div>
       <div class="s-price" id="sum-price-${s.stock_id}">$${fmt(s.price)}</div>
-      <div class="s-pct ${pctClass}" id="sum-pct-${s.stock_id}">${pctSign}${s.pct_change.toFixed(2)}%</div>
-      <div class="s-vol" id="sum-vol-${s.stock_id}">Vol: ${s.volume.toLocaleString()}</div>`;
-    summaryGrid.appendChild(div);
+      <div class="s-vol" id="sum-vol-${s.stock_id}">Vol: ${s.volume.toLocaleString()}</div>
+      <div class="t-chart"><canvas id="chart-${s.stock_id}"></canvas></div>`;
+    tilesGrid.appendChild(tile);
     summaryCards[s.stock_id] = {
-      priceEl: div.querySelector(`#sum-price-${s.stock_id}`),
-      pctEl:   div.querySelector(`#sum-pct-${s.stock_id}`),
-      volEl:   div.querySelector(`#sum-vol-${s.stock_id}`),
+      priceEl: tile.querySelector(`#sum-price-${s.stock_id}`),
+      pctEl:   tile.querySelector(`#sum-pct-${s.stock_id}`),
+      volEl:   tile.querySelector(`#sum-vol-${s.stock_id}`),
     };
+    buildChart(s);
   }
 }
 
-// ── Render charts ─────────────────────────────────────────
-const chartsGrid = document.getElementById("charts-grid");
-function renderCharts(stocks) {
-  chartsGrid.innerHTML = "";
+// In-place number refresh used by the 15s poll — never rebuilds tiles/charts.
+function updateCards(stocks) {
   for (const s of stocks) {
-    const card = document.createElement("div");
-    card.className = "chart-card";
-    card.innerHTML = `<h3>${s.name} <span class="muted">(${s.stock_id})</span></h3>
-      <canvas id="chart-${s.stock_id}" height="180"></canvas>`;
-    chartsGrid.appendChild(card);
-
-    initPrice[s.stock_id] = s.init_price;
-    const points = s.history.map(h => ({ x: minSinceKickoff(h.ts), y: h.price }));
-    // Start the line at (0, init_price): history's first row is the first tick
-    // (x≈0.04), not kickoff, so without this the line floats off the left edge.
-    if (eventStart != null && points.length && points[0].x > 1e-6) {
-      points.unshift({ x: 0, y: s.init_price });
-    }
-    // Anchor the x-axis at kickoff (0) and end it exactly at the latest point so
-    // the line spans the full width — no left margin, no gap before the axis end.
-    // Chart.js otherwise rounds the domain out to "nice" ticks (e.g. 10..30),
-    // which floats the plot in the middle. maxX stays undefined pre-kickoff (no
-    // data) so the axis auto-sizes until the first tick arrives.
-    const maxX = points.length ? points[points.length - 1].x : undefined;
-
-    const ctx = document.getElementById(`chart-${s.stock_id}`).getContext("2d");
-    charts[s.stock_id] = new Chart(ctx, {
-      type: "line",
-      data: {
-        datasets: [{
-          label: s.name,
-          data: points,
-          borderColor: "#6c8cff",
-          backgroundColor: "rgba(108,140,255,.12)",
-          borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          fill: true,
-          tension: 0.3,
-        }],
-      },
-      options: {
-        responsive: true,
-        animation: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => "$" + fmt(ctx.parsed.y),
-            },
-          },
-        },
-        scales: {
-          x: {
-            type: "linear",
-            min: 0,
-            max: maxX,
-            // Keep max at "now" so the line reaches the right edge, but label only
-            // whole event-minutes: 0,1,…,floor(max). We generate the integer ticks
-            // ourselves so the fractional max (e.g. 5.06) never gets its own label.
-            // step snaps to a nice minute value (1,2,5,10,15,20,30,60,…) — the
-            // smallest that keeps ≤ 8 gaps (≤ ~9 labels), e.g. a 120-min event → 15.
-            afterBuildTicks: (axis) => {
-              const hi = Math.floor(axis.max || 0);
-              const NICE = [1, 2, 5, 10, 15, 20, 30, 60, 120, 240];
-              let step = NICE[NICE.length - 1];
-              for (const s of NICE) { if (Math.floor(hi / s) <= 8) { step = s; break; } }
-              const ticks = [];
-              for (let v = 0; v <= hi; v += step) ticks.push({ value: v });
-              axis.ticks = ticks;
-            },
-            ticks: { color: "#8892a4", maxRotation: 0, autoSkip: false },
-            grid:  { color: "#2e3350" },
-          },
-          y: {
-            ticks: { color: "#8892a4", callback: v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
-            grid:  { color: "#2e3350" },
-          },
-        },
-      },
-    });
+    const card = summaryCards[s.stock_id];
+    if (!card) continue;
+    card.priceEl.textContent = "$" + fmt(s.price);
+    const pct = s.pct_change;
+    card.pctEl.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
+    card.pctEl.className = "s-pct " + (pct >= 0 ? "pos" : "neg");
+    card.volEl.textContent = "Vol: " + s.volume.toLocaleString();
   }
+}
+
+function buildChart(s) {
+  initPrice[s.stock_id] = s.init_price;
+  const points = s.history.map(h => ({ x: minSinceKickoff(h.ts), y: h.price }));
+  // Start the line at (0, init_price): history's first row is the first tick
+  // (x≈0.04), not kickoff, so without this the line floats off the left edge.
+  if (eventStart != null && points.length && points[0].x > 1e-6) {
+    points.unshift({ x: 0, y: s.init_price });
+  }
+  // Anchor x at kickoff (0) and end at the latest point so the line spans full
+  // width. maxX stays undefined pre-kickoff (no data) so the axis auto-sizes.
+  const maxX = points.length ? points[points.length - 1].x : undefined;
+
+  const ctx = document.getElementById(`chart-${s.stock_id}`).getContext("2d");
+  charts[s.stock_id] = new Chart(ctx, {
+    type: "line",
+    data: {
+      datasets: [{
+        label: s.name,
+        data: points,
+        borderColor: "#6c8cff",
+        backgroundColor: "rgba(108,140,255,.12)",
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        fill: true,
+        tension: 0.3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,   // fill the tile's CSS height (projection grows, phone fixes)
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => "$" + fmt(ctx.parsed.y) } },
+      },
+      scales: {
+        x: {
+          type: "linear",
+          min: 0,
+          max: maxX,
+          // Label only whole event-minutes: 0,1,…,floor(max). step snaps to a
+          // nice value keeping ≤ 8 gaps (e.g. a 120-min event → 15).
+          afterBuildTicks: (axis) => {
+            const hi = Math.floor(axis.max || 0);
+            const NICE = [1, 2, 5, 10, 15, 20, 30, 60, 120, 240];
+            let step = NICE[NICE.length - 1];
+            for (const s of NICE) { if (Math.floor(hi / s) <= 8) { step = s; break; } }
+            const ticks = [];
+            for (let v = 0; v <= hi; v += step) ticks.push({ value: v });
+            axis.ticks = ticks;
+          },
+          ticks: { color: "#8892a4", maxRotation: 0, autoSkip: false },
+          grid:  { color: "#2e3350" },
+        },
+        y: {
+          ticks: { color: "#8892a4", callback: v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
+          grid:  { color: "#2e3350" },
+        },
+      },
+    },
+  });
 }
 
 // ── Render news ───────────────────────────────────────────
@@ -240,7 +240,7 @@ async function pollDashboard() {
     timeScale = data.time_scale ?? 1;
     updateEventStatus(data.started, data.elapsed_min, data.paused);
     // Optionally refresh summary and news too
-    if (data.stocks && data.stocks.length > 0) renderSummary(data.stocks);
+    if (data.stocks && data.stocks.length > 0) updateCards(data.stocks);
     if (data.news) renderNews(data.news);
   } catch (_) { /* ignore poll errors silently */ }
 }
@@ -252,8 +252,7 @@ async function load() {
     eventStart = data.event_start;
     timeScale = data.time_scale ?? 1;
     updateEventStatus(data.started, data.elapsed_min, data.paused);
-    renderSummary(data.stocks);
-    renderCharts(data.stocks);
+    renderTiles(data.stocks);
     renderNews(data.news);
     connectStream();
     // Start periodic poll every 15s

@@ -253,37 +253,31 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 
 /* ── Dashboard ─────────────────────────────────────────── */
 .dash-header { margin-bottom: 20px; }
-.summary-grid {
+/* ── Fused tile (shared by both layouts) ───────────────────────────────── */
+.tile {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+}
+.tile .t-head { display: flex; justify-content: space-between; align-items: baseline; }
+.tile .s-name  { font-size: .85rem; color: var(--muted); }
+.tile .s-price { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .s-pct   { font-size: .9rem; font-weight: 600; }
+.tile .s-vol   { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+.tile .t-chart { position: relative; margin-top: 8px; }
+.tile canvas   { width: 100% !important; }
+
+/* ── Phone layout: single column, scrolls ──────────────────────────────── */
+.dash--phone .tiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 12px;
   margin-bottom: 20px;
 }
-.summary-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-}
-.summary-card .s-name { font-size: .8rem; color: var(--muted); margin-bottom: 2px; }
-.summary-card .s-price { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.summary-card .s-pct { font-size: .85rem; font-weight: 600; margin-top: 1px; }
-.summary-card .s-vol { font-size: .78rem; color: var(--muted); margin-top: 3px; }
-
-.charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.chart-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-}
-.chart-card h3 { margin-bottom: 10px; font-size: .95rem; }
-.chart-card canvas { width: 100% !important; }
+.dash--phone .tile .t-chart { height: 160px; }
 
 .news-banner { margin-bottom: 20px; }
 .news-item {
@@ -298,7 +292,6 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 /* ── Responsive tweaks ─────────────────────────────────── */
 @media (max-width: 640px) {
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
-  .charts-grid { grid-template-columns: 1fr; }
 }
 @media (min-width: 769px) {
   .container { max-width: 640px; }

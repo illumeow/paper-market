@@ -12,7 +12,7 @@
 
 <div id="toast"></div>
 
-<div class="container--wide">
+<div class="container--wide dash dash--phone">
   <div class="page-header dash-header">
     <h1>Market Dashboard</h1>
     <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
@@ -22,17 +22,14 @@
     </div>
   </div>
 
-  <!-- Summary row -->
-  <div id="summary-grid" class="summary-grid"></div>
-
   <!-- News banner -->
   <div class="card news-banner">
     <h2>News Feed</h2>
     <div id="news-feed"></div>
   </div>
 
-  <!-- Charts -->
-  <div id="charts-grid" class="charts-grid"></div>
+  <!-- Per-stock fused tiles (price + pct + vol + chart) -->
+  <div id="tiles-grid" class="tiles-grid"></div>
 </div>
 
 <script type="module" src="js/dashboard.js"></script>

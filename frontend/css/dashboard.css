@@ -38,11 +38,13 @@
   height: 100vh; max-width: none; margin: 0; padding: 16px 24px;
   display: flex; flex-direction: column; overflow: hidden;
 }
-.dash--screen .dash-header { margin-bottom: 8px; padding: 6px 0 8px; }
+/* Brown title bar stays, but drop the tile sticker ring (white die-cut halo looks
+   broken around the header/news on the projection) and give it inner padding. */
+.dash--screen .dash-header { margin-bottom: 10px; padding: 8px 18px; box-shadow: none; }
 .dash--screen .dash-header h1 { font-size: 1.4rem; }
 .dash--screen #event-status, .dash--screen #last-update { font-size: .95rem; }
 /* News = latest headline only, as a one-line ticker banner: a coral "NEWS" tag + a larger headline */
-.dash--screen .news-banner { margin-bottom: 10px; flex: 0 0 auto; padding: 0; background: none; border: none; border-radius: 0; }
+.dash--screen .news-banner { margin-bottom: 10px; flex: 0 0 auto; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
 .dash--screen .news-banner h2 { display: none; }
 .dash--screen #news-feed { overflow: hidden; font-size: 1.5rem; }
 .dash--screen .news-item {

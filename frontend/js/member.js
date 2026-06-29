@@ -1,14 +1,4 @@
-import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "./common.js";
-
-// ── Toast helper ────────────────────────────────────────
-const toastEl = document.getElementById("toast");
-let toastTimer;
-function toast(msg, type = "ok") {
-  clearTimeout(toastTimer);
-  toastEl.textContent = msg;
-  toastEl.className = `show toast-${type}`;
-  toastTimer = setTimeout(() => { toastEl.className = ""; }, 3200);
-}
+import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast } from "./common.js";
 
 // ── State ───────────────────────────────────────────────
 let prices = {}; // stock_id -> current price (live)
@@ -110,7 +100,7 @@ function wireFdForm() {
     if (!p || p < 1) { toast("Enter a principal", "err"); return; }
     try {
       await api("/api/fd/open", "POST", { principal: p, term: parseInt(term.value, 10) });
-      toast("FD opened", "ok");
+      toast("FD opened");
       await refreshMe();   // renders the card and flips fdShown
     } catch (err) { toast(err.message, "err"); }
   });
@@ -131,7 +121,7 @@ async function closeFd() {
   if (!window.confirm(msg)) return;
   try {
     await api("/api/fd/close", "POST");
-    toast("FD closed", "ok");
+    toast("FD closed");
     await refreshMe();
   } catch (err) { toast(err.message, "err"); }
 }
@@ -172,7 +162,7 @@ function renderMarket(market) {
     btn.disabled = true;
     try {
       const res = await api("/api/trade", "POST", { stock_id: sid, side, shares });
-      toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${money(res.price)}`, "ok");
+      toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${money(res.price)}`);
       await refreshMe();
     } catch (err) {
       toast(err.message, "err");
@@ -206,7 +196,7 @@ function onPrices(updates) {
   refreshMe();
 }
 function onNews(n) {
-  toast(n.text, "ok");
+  toast(n.text);
 }
 
 // ── Refresh me ──────────────────────────────────────────

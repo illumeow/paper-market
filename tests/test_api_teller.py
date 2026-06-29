@@ -149,7 +149,7 @@ def test_trade_blocked_when_paused(client):
     client.post("/api/teller/start")
     client.post("/api/teller/stop")
     r = client.post("/api/teller/trade", json={"id": "0-1", "stock_id": "TECH", "side": "buy", "shares": 1})
-    assert r.status_code == 409 and r.json()["detail"] == "event paused"
+    assert r.status_code == 409 and r.json()["detail"] == "Event paused"
 
 
 def test_banking_ops_blocked_when_paused(client):
@@ -173,7 +173,7 @@ def test_banking_blocked_before_kickoff(client):
     # pre-kickoff mirrors paused: every state mutation is frozen until Start.
     _staff(client)
     r = client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100})
-    assert r.status_code == 409 and r.json()["detail"] == "event not started"
+    assert r.status_code == 409 and r.json()["detail"] == "Event not started"
     assert client.post("/api/teller/news", json={"text": "x"}).status_code == 409  # news frozen too
     client.post("/api/teller/start")
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
@@ -185,7 +185,7 @@ def test_business_error_returns_400_with_message(client):
     client.post("/api/teller/start")  # past the pre-kickoff gate so business logic runs
     r = client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 999999})
     assert r.status_code == 400
-    assert r.json()["detail"] == "insufficient balance"
+    assert r.json()["detail"] == "Insufficient balance"
 
 
 def test_teller_trade_blocked_before_start(client):

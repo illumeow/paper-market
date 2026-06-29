@@ -44,3 +44,14 @@ export function stream(onPrices, onNews, onStatus) {
   if (onStatus) es.addEventListener("status", e => onStatus(JSON.parse(e.data)));
   return es;
 }
+// Toast: transient status banner. Every page includes <div id="toast">; the
+// element is resolved lazily so this works regardless of script/import order.
+let _toastEl, _toastTimer;
+export function toast(msg, type = "ok") {
+  _toastEl ||= document.getElementById("toast");
+  if (!_toastEl) return;
+  clearTimeout(_toastTimer);
+  _toastEl.textContent = msg;
+  _toastEl.className = `show toast-${type}`;
+  _toastTimer = setTimeout(() => { _toastEl.className = ""; }, 3500);
+}

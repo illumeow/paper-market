@@ -9,7 +9,7 @@ def require_running(request: Request):
     # frontend can tell the two states apart. Reads/lookup/news/start-stop stay open.
     conn = request.app.state.conn
     if event_start(conn) is None:
-        raise HTTPException(409, "event not started")
+        raise HTTPException(409, "Event not started")
     if is_paused(conn):
-        raise HTTPException(409, "event paused")
+        raise HTTPException(409, "Event paused")
     return True

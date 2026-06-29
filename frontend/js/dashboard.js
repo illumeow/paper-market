@@ -1,14 +1,4 @@
-import { api, stream, money as fmt } from "./common.js";
-
-// ── Toast ────────────────────────────────────────────────
-const toastEl = document.getElementById("toast");
-let toastTimer;
-function toast(msg, type = "ok") {
-  clearTimeout(toastTimer);
-  toastEl.textContent = msg;
-  toastEl.className = `show toast-${type}`;
-  toastTimer = setTimeout(() => { toastEl.className = ""; }, 3500);
-}
+import { api, stream, money as fmt, toast } from "./common.js";
 
 // ── Formatting ───────────────────────────────────────────
 function minSinceKickoff(ts) {

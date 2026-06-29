@@ -130,20 +130,24 @@
     </div><!-- /unlocked-panel -->
   </div><!-- /member-panel -->
 
-  <!-- Event Control -->
-  <div class="card" id="event-control-card">
-    <h2>Event Control</h2>
-    <div id="event-status-line" class="muted" style="margin-bottom:10px;"></div>
-    <button class="btn btn--success btn--sm" id="start-event-btn" style="display:none;">Start Event</button>
-    <button class="btn btn--danger btn--sm" id="stop-event-btn" style="display:none;">Pause Event</button>
-  </div>
-
   <!-- News Publish -->
   <div class="card">
     <h2>Publish News</h2>
     <div class="row" style="gap:6px">
       <input type="text" id="news-text" placeholder="Market announcement..." style="flex:1" />
       <button class="btn btn--primary btn--sm btn--w95 btn--input-h" id="news-btn">Publish</button>
+    </div>
+  </div>
+
+  <!-- Event Control (kept at the bottom — the rarely-touched master switch) -->
+  <div class="card" id="event-control-card">
+    <h2>Event Control</h2>
+    <div class="row row--between">
+      <span id="event-status-line" class="muted"></span>
+      <div class="row" style="gap:6px;flex-wrap:nowrap">
+        <button class="btn btn--success btn--sm" id="start-event-btn" style="display:none;">Start Event</button>
+        <button class="btn btn--danger btn--sm" id="stop-event-btn" style="display:none;">Pause Event</button>
+      </div>
     </div>
   </div>
 

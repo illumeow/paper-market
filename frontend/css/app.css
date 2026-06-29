@@ -317,22 +317,24 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 .dash--screen .dash-header { margin-bottom: 8px; padding: 6px 0 8px; }
 .dash--screen .dash-header h1 { font-size: 1.4rem; }
 .dash--screen #event-status, .dash--screen #last-update { font-size: .95rem; }
-/* News = single latest headline as a slim banner (one line, older items hidden) */
-.dash--screen .news-banner { margin-bottom: 12px; flex: 0 0 auto; padding: 10px 16px; }
+/* News = latest headline only, as a clean one-line ticker (no card, no label).
+   Headline takes the chart-line accent so news reads as part of the market. */
+.dash--screen .news-banner { margin-bottom: 10px; flex: 0 0 auto; padding: 0; background: none; border: none; border-radius: 0; }
 .dash--screen .news-banner h2 { display: none; }
 .dash--screen #news-feed { overflow: hidden; }
 .dash--screen .news-item {
   margin: 0;
   padding: 0;
   background: none;
-  border-left: none;
+  border: none;
   border-radius: 0;
+  color: var(--accent);
   font-size: 1.15rem;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.dash--screen .news-item::before { content: "📰 NEWS  "; color: var(--muted); font-weight: 700; }
 .dash--screen .news-item:not(:first-child) { display: none; }
 /* Tiles fill the rest; row 1 = 3 tiles, row 2 = 2 tiles centered */
 .dash--screen .tiles-grid {

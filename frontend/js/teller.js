@@ -144,14 +144,17 @@ function showUnlocked(data) {
   currentDebt = data.debt || 0;
   const lrBtn  = document.getElementById("loan-repay-btn");
   const lrNote = document.getElementById("loan-repay-note");
+  const settleBtn = document.getElementById("settle-btn");
   if (currentDebt > 0) {
     lrBtn.textContent = "Repay";
     lrBtn.className = "btn btn--neutral btn--sm btn--w95 btn--input-h";
     lrNote.textContent = `Owes $${money(currentDebt)} (incl. accrued interest)`;
+    settleBtn.style.display = "";   // pays the exact owed — clears fractional residue a typed repay can't
   } else {
     lrBtn.textContent = "Issue Loan";
     lrBtn.className = "btn btn--primary btn--sm btn--w95 btn--input-h";
     lrNote.textContent = "";
+    settleBtn.style.display = "none";
   }
 
   renderMemberFd(data);   // the FD card (payout + countdown)
@@ -267,6 +270,11 @@ document.getElementById("loan-repay-btn").addEventListener("click", async () => 
     else
       await tellerOp("/api/teller/loan", { amount: amt }, "Loan issued", ["loan-repay-amt"]);
   } catch (e) { toast(e.message, "err"); }
+});
+
+document.getElementById("settle-btn").addEventListener("click", async () => {
+  // No amount — the server charges the exact full-precision owed and closes the loan.
+  await tellerOp("/api/teller/settle", {}, "Loan settled", ["loan-repay-amt"]);
 });
 
 // FD open/close handlers are wired per-lookup inside renderFdOps (markup is dynamic).

@@ -35,7 +35,7 @@ def _staff(client):
 
 def test_staff_deposit_then_export(client):
     _staff(client)
-    client.post("/api/teller/start")  # banking is gated until kickoff
+    client.post("/api/teller/run")  # banking is gated until kickoff
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-1")}).json()["locked"] is False
     client.post("/api/teller/deposit", json={"id": "0-1", "amount": 250})
     r = client.get("/api/export")
@@ -45,7 +45,7 @@ def test_staff_deposit_then_export(client):
 
 def test_cooldown_locks_second_lookup(client):
     _staff(client)
-    client.post("/api/teller/start")  # cooldown applies only while the event is live
+    client.post("/api/teller/run")  # cooldown applies only while the event is live
     client.post("/api/teller/lookup", json={"pin": _pin("0-2")})
     second = client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()
     assert second["locked"] is True and second["cooldown_remaining_sec"] > 0
@@ -57,7 +57,7 @@ def test_lookup_cooldown_disabled_before_kickoff(client):
     _staff(client)
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False   # still open, no cooldown
-    client.post("/api/teller/start")
+    client.post("/api/teller/run")
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False   # first live visit, fresh
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is True    # second within window → locked
 
@@ -65,8 +65,8 @@ def test_lookup_cooldown_disabled_before_kickoff(client):
 def test_lookup_cooldown_disabled_while_paused(client):
     # Paused mirrors pre-kickoff: lookups don't trip the cooldown.
     _staff(client)
-    client.post("/api/teller/start")
-    client.post("/api/teller/stop")
+    client.post("/api/teller/run")
+    client.post("/api/teller/pause")
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False
 
@@ -86,7 +86,7 @@ def test_logout_clears_session(client):
 
 def test_op_returns_snapshot_without_relocking(client):
     _staff(client)
-    client.post("/api/teller/start")  # banking is gated until kickoff
+    client.post("/api/teller/run")  # banking is gated until kickoff
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-1")}).json()["locked"] is False  # starts the visit
     # The op returns a fresh, unlocked snapshot — no re-lookup needed, so the
     # cooldown started by the lookup never blocks the post-op refresh.
@@ -100,15 +100,15 @@ def test_wrong_staff_password(client):
     assert client.post("/api/login/staff", json={"password": "nope"}).status_code == 403
 
 
-def test_start_sets_clock_and_is_idempotent(client):
-    # Before start: dashboard shows not started
+def test_run_sets_clock_and_is_idempotent(client):
+    # Before kickoff: dashboard shows not started
     dash = client.get("/api/dashboard").json()
     assert dash["started"] is False
     assert dash["elapsed_min"] == 0 or dash["elapsed_min"] == 0.0
 
-    # Staff login and call start
+    # Staff login and call run (kickoff)
     _staff(client)
-    r = client.post("/api/teller/start")
+    r = client.post("/api/teller/run")
     assert r.status_code == 200
     assert r.json()["started"] is True
     since = r.json()["since"]
@@ -118,44 +118,44 @@ def test_start_sets_clock_and_is_idempotent(client):
     dash = client.get("/api/dashboard").json()
     assert dash["started"] is True
 
-    # Call start again: since must not change (idempotent)
-    r2 = client.post("/api/teller/start")
+    # Call run again: since must not change (idempotent)
+    r2 = client.post("/api/teller/run")
     since2 = r2.json()["since"]
     assert since2 == since
 
 
-def test_start_requires_staff(client):
+def test_run_requires_staff(client):
     # No auth: 403
-    assert client.post("/api/teller/start").status_code == 403
+    assert client.post("/api/teller/run").status_code == 403
 
 
-def test_stop_then_resume_event(client):
+def test_pause_then_resume_event(client):
     _staff(client)
-    client.post("/api/teller/start")
-    s = client.post("/api/teller/stop").json()
+    client.post("/api/teller/run")
+    s = client.post("/api/teller/pause").json()
     assert s["started"] is True and s["paused"] is True
     assert client.get("/api/dashboard").json()["paused"] is True
-    r = client.post("/api/teller/start").json()  # Start doubles as resume
+    r = client.post("/api/teller/run").json()  # /run doubles as resume
     assert r["paused"] is False
     assert client.get("/api/dashboard").json()["paused"] is False
 
 
-def test_stop_requires_staff(client):
-    assert client.post("/api/teller/stop").status_code == 403
+def test_pause_requires_staff(client):
+    assert client.post("/api/teller/pause").status_code == 403
 
 
 def test_trade_blocked_when_paused(client):
     _staff(client)
-    client.post("/api/teller/start")
-    client.post("/api/teller/stop")
+    client.post("/api/teller/run")
+    client.post("/api/teller/pause")
     r = client.post("/api/teller/trade", json={"id": "0-1", "stock_id": "TECH", "side": "buy", "shares": 1})
     assert r.status_code == 409 and r.json()["detail"] == "Event paused"
 
 
 def test_banking_ops_blocked_when_paused(client):
     _staff(client)
-    client.post("/api/teller/start")
-    client.post("/api/teller/stop")
+    client.post("/api/teller/run")
+    client.post("/api/teller/pause")
     # every state mutation freezes; reads/export stay open
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 409
     assert client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 100}).status_code == 409
@@ -164,7 +164,7 @@ def test_banking_ops_blocked_when_paused(client):
     assert client.post("/api/teller/lookup", json={"pin": _pin("0-1")}).status_code == 200          # read still works
     assert client.get("/api/export").status_code == 200              # export still works
     # resume re-opens banking
-    client.post("/api/teller/start")
+    client.post("/api/teller/run")
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
     assert client.post("/api/teller/news", json={"text": "x"}).status_code == 200
 
@@ -175,14 +175,14 @@ def test_banking_blocked_before_kickoff(client):
     r = client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100})
     assert r.status_code == 409 and r.json()["detail"] == "Event not started"
     assert client.post("/api/teller/news", json={"text": "x"}).status_code == 409  # news frozen too
-    client.post("/api/teller/start")
+    client.post("/api/teller/run")
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
 
 
 def test_business_error_returns_400_with_message(client):
     # A domain rejection surfaces as 400 + detail (frontend toasts it), not a 500.
     _staff(client)
-    client.post("/api/teller/start")  # past the pre-kickoff gate so business logic runs
+    client.post("/api/teller/run")  # past the pre-kickoff gate so business logic runs
     r = client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 999999})
     assert r.status_code == 400
     assert r.json()["detail"] == "Insufficient balance"
@@ -212,7 +212,7 @@ def test_dashboard_exposes_event_start(client):
 
     # Staff login and start the event
     _staff(client)
-    r = client.post("/api/teller/start")
+    r = client.post("/api/teller/run")
     assert r.status_code == 200
     since = r.json()["since"]
 
@@ -227,7 +227,7 @@ def test_member_snapshot_is_cooldown_free_read(client):
     # The teller-page refresh path: a read that reflects live state, never locks,
     # is repeatable, and does not consume a cooldown visit.
     _staff(client)
-    client.post("/api/teller/start")  # so banking ops past the require_running gate
+    client.post("/api/teller/run")  # so banking ops past the require_running gate
     # repeatable, never locked
     s1 = client.get("/api/teller/member/0-1/snapshot")
     assert s1.status_code == 200 and s1.json()["locked"] is False
@@ -246,18 +246,18 @@ def test_member_snapshot_requires_staff(client):
     assert client.get("/api/teller/member/0-1/snapshot").status_code == 403
 
 
-def test_stop_broadcasts_status_paused(client):
-    # Verify that POST /api/teller/stop publishes a "status" SSE event with paused=True.
+def test_pause_broadcasts_status_paused(client):
+    # Verify that POST /api/teller/pause publishes a "status" SSE event with paused=True.
     # Strategy: directly inject a Queue into bc._subs before the POST (avoids the async
     # subscribe call), then drain it with get_nowait() after the request returns.
     import asyncio
     _staff(client)
-    client.post("/api/teller/start")
+    client.post("/api/teller/run")
     bc = client.app.state.broadcaster
     q = asyncio.Queue()
     bc._subs.add(q)
     try:
-        r = client.post("/api/teller/stop")
+        r = client.post("/api/teller/pause")
         assert r.status_code == 200
         # Response shape: must report started=True, paused=True
         body = r.json()

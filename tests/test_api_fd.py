@@ -73,7 +73,7 @@ def test_member_can_close_own_fd(client):
 
 def test_teller_close_by_member_no_fd_id(client):
     _staff(client)
-    client.post("/api/teller/start")  # FD ops gated until kickoff
+    client.post("/api/teller/run")  # FD ops gated until kickoff
     assert client.post("/api/teller/fd/open",
                        json={"id": "0-3", "principal": 1000, "term": 30}).status_code == 200
     assert client.post("/api/teller/fd/close", json={"id": "0-3"}).status_code == 200  # no fd_id

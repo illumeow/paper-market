@@ -5,7 +5,7 @@ from app.bank import repo as bank_repo
 from app.bank import service as bank_service
 from app.stock import repo as stock_repo
 from app.stock import service as stock_service
-from app.core.auth import make_token, require_staff, COOKIE
+from app.core.auth import make_token, require_staff, COOKIE, pin_hash
 from app.core.clock import (event_start, set_event_start, elapsed_min, accrued_minutes, time_scale,
                             is_paused, pause_event, resume_event)
 from app.api.deps import require_running
@@ -83,18 +83,20 @@ async def t_stop(request: Request, _: bool = Depends(require_staff)):
     return {"started": started, "paused": paused, "elapsed_min": em}
 
 
-@router.get("/api/member/{mid}")
-async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
+@router.post("/api/teller/lookup")
+async def lookup(request: Request, _: bool = Depends(require_staff)):
     conn = request.app.state.conn
-    m = bank_repo.get_member(conn, mid)
+    b = await request.json()
+    m = bank_repo.get_member_by_pin(conn, pin_hash(str(b.get("pin", ""))))
     if not m:
         raise HTTPException(404, "no such member")
+    mid = m["member_id"]
     now = time.time()
     eco = request.app.state.config.economy
     # The teller-visit cooldown applies only while the event is live. Before
-    # kickoff and while paused, staff can look members up freely: the lock is
-    # not checked and the visit is NOT recorded, so the live cooldown starts
-    # fresh at kickoff/resume instead of inheriting a setup-time visit.
+    # kickoff and while paused, staff look members up freely: the lock is not
+    # checked and the visit is NOT recorded, so the live cooldown starts fresh
+    # at kickoff/resume instead of inheriting a setup-time visit.
     running = event_start(conn) is not None and not is_paused(conn)
     if running:
         locked, remaining = visit_status(m["last_teller_visit_at"], now,

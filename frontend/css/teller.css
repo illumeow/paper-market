@@ -9,7 +9,7 @@
 
 /* Member-lookup inline form */
 .inline-form { display: flex; gap: 6px; align-items: flex-end; }
-.inline-form input { max-width: 120px; }
+.inline-form input { max-width: 170px; }
 
 /* Cooldown badge */
 .locked-badge {

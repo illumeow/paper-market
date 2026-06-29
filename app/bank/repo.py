@@ -2,6 +2,10 @@ def get_member(conn, mid):
     return conn.execute("SELECT * FROM members WHERE member_id=?", (mid,)).fetchone()
 
 
+def get_member_by_pin(conn, pin_hashed):
+    return conn.execute("SELECT * FROM members WHERE pin=?", (pin_hashed,)).fetchone()
+
+
 def update_member(conn, mid, **fields):
     sets = ",".join(f"{k}=?" for k in fields)
     conn.execute(f"UPDATE members SET {sets} WHERE member_id=?", (*fields.values(), mid))

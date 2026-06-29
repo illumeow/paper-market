@@ -1,6 +1,15 @@
+import csv
 import time
 import pytest
 from starlette.testclient import TestClient
+
+
+def _pin(mid):
+    with open("config/pins.csv", newline="") as f:
+        for row in csv.DictReader(f):
+            if row["member_id"] == mid:
+                return row["pin"]
+    raise KeyError(mid)
 
 
 @pytest.fixture
@@ -27,7 +36,7 @@ def _staff(client):
 def test_staff_deposit_then_export(client):
     _staff(client)
     client.post("/api/teller/start")  # banking is gated until kickoff
-    assert client.get("/api/member/0-1").json()["locked"] is False
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-1")}).json()["locked"] is False
     client.post("/api/teller/deposit", json={"id": "0-1", "amount": 250})
     r = client.get("/api/export")
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
@@ -37,8 +46,8 @@ def test_staff_deposit_then_export(client):
 def test_cooldown_locks_second_lookup(client):
     _staff(client)
     client.post("/api/teller/start")  # cooldown applies only while the event is live
-    client.get("/api/member/0-2")
-    second = client.get("/api/member/0-2").json()
+    client.post("/api/teller/lookup", json={"pin": _pin("0-2")})
+    second = client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()
     assert second["locked"] is True and second["cooldown_remaining_sec"] > 0
 
 
@@ -46,11 +55,11 @@ def test_lookup_cooldown_disabled_before_kickoff(client):
     # Pre-kickoff: repeated lookups never lock and don't record a visit, so the
     # live cooldown starts fresh at kickoff.
     _staff(client)
-    assert client.get("/api/member/0-2").json()["locked"] is False
-    assert client.get("/api/member/0-2").json()["locked"] is False   # still open, no cooldown
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False   # still open, no cooldown
     client.post("/api/teller/start")
-    assert client.get("/api/member/0-2").json()["locked"] is False   # first live visit, fresh
-    assert client.get("/api/member/0-2").json()["locked"] is True    # second within window → locked
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False   # first live visit, fresh
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is True    # second within window → locked
 
 
 def test_lookup_cooldown_disabled_while_paused(client):
@@ -58,8 +67,8 @@ def test_lookup_cooldown_disabled_while_paused(client):
     _staff(client)
     client.post("/api/teller/start")
     client.post("/api/teller/stop")
-    assert client.get("/api/member/0-2").json()["locked"] is False
-    assert client.get("/api/member/0-2").json()["locked"] is False
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-2")}).json()["locked"] is False
 
 
 def test_session_probe_requires_staff(client):
@@ -78,7 +87,7 @@ def test_logout_clears_session(client):
 def test_op_returns_snapshot_without_relocking(client):
     _staff(client)
     client.post("/api/teller/start")  # banking is gated until kickoff
-    assert client.get("/api/member/0-1").json()["locked"] is False  # starts the visit
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-1")}).json()["locked"] is False  # starts the visit
     # The op returns a fresh, unlocked snapshot — no re-lookup needed, so the
     # cooldown started by the lookup never blocks the post-op refresh.
     dep = client.post("/api/teller/deposit", json={"id": "0-1", "amount": 250}).json()
@@ -152,7 +161,7 @@ def test_banking_ops_blocked_when_paused(client):
     assert client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 100}).status_code == 409
     assert client.post("/api/teller/fd/open", json={"id": "0-1", "principal": 100, "term": 30}).status_code == 409
     assert client.post("/api/teller/news", json={"text": "x"}).status_code == 409   # news is a write → frozen
-    assert client.get("/api/member/0-1").status_code == 200          # read still works
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-1")}).status_code == 200          # read still works
     assert client.get("/api/export").status_code == 200              # export still works
     # resume re-opens banking
     client.post("/api/teller/start")
@@ -228,7 +237,7 @@ def test_member_snapshot_is_cooldown_free_read(client):
     client.post("/api/teller/deposit", json={"id": "0-1", "amount": 250})
     assert client.get("/api/teller/member/0-1/snapshot").json()["balance"] >= 250
     # peeking must NOT start a visit: a real lookup afterwards is still unlocked
-    assert client.get("/api/member/0-1").json()["locked"] is False
+    assert client.post("/api/teller/lookup", json={"pin": _pin("0-1")}).json()["locked"] is False
     # unknown member -> 404
     assert client.get("/api/teller/member/9-99/snapshot").status_code == 404
 

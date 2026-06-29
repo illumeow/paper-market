@@ -50,13 +50,17 @@
 .dash--screen .news-item {
   display: flex; align-items: center; gap: 12px;
   margin: 0; padding: 0; background: none; border: none; border-radius: 0;
-  color: var(--brown); font-weight: 700; font-size: 1.2rem; line-height: 1; overflow: hidden;
+  color: var(--brown); font-weight: 700; font-size: 1.2rem; line-height: 1.2; overflow: hidden;
 }
 /* font-size lives here (not on #news-feed): the base .news-item sets .9rem on
    the element itself, so the headline never inherits #news-feed's size. */
 .dash--screen .news-item > div { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash--screen .news-item::before {
-  content: "NEWS"; flex: 0 0 auto; padding: 3px 10px; border-radius: 6px;
+  content: "NEWS"; flex: 0 0 auto; border-radius: 6px;
+  /* pixel font sits high in its line box → center the glyphs in the pill itself
+     (inline-flex + tight line-height), then the row's align-items:center lines
+     the pill up against the headline. */
+  display: inline-flex; align-items: center; line-height: 1; padding: 5px 10px;
   background: var(--coral); color: var(--cream-2);
   font-family: var(--font-pixel); font-size: .85rem; font-weight: 700; letter-spacing: .04em;
 }

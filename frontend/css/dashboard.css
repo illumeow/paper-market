@@ -61,6 +61,7 @@
      (inline-flex + tight line-height), then the row's align-items:center lines
      the pill up against the headline. */
   display: inline-flex; align-items: center; line-height: 1; padding: 5px 10px;
+  transform: translateY(1px);   /* nudge the high-sitting pixel glyphs down to the headline's center */
   background: var(--coral); color: var(--cream-2);
   font-family: var(--font-pixel); font-size: .85rem; font-weight: 700; letter-spacing: .04em;
 }

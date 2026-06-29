@@ -339,7 +339,7 @@ enterClicks("news-text",      "news-btn");
 
 // ── Event Control ─────────────────────────────────────────
 // Three states from {started, paused}: not-started → Start; running → Pause;
-// paused → Resume (the start endpoint doubles as resume).
+// paused → Resume (the /run endpoint doubles as resume).
 const eventStatusLine = document.getElementById("event-status-line");
 const startEventBtn   = document.getElementById("start-event-btn");
 const stopEventBtn    = document.getElementById("stop-event-btn");
@@ -380,7 +380,7 @@ startEventBtn.addEventListener("click", async () => {
   const resuming = startEventBtn.textContent.includes("Resume");
   startEventBtn.disabled = true;
   try {
-    const res = await api("/api/teller/start", "POST");
+    const res = await api("/api/teller/run", "POST");
     renderEventControl({ started: true, paused: false, elapsed_min: res.elapsed_min });
     toast(resuming ? "Event resumed" : "Event started!", "ok");
   } catch (err) {
@@ -391,10 +391,10 @@ startEventBtn.addEventListener("click", async () => {
 });
 
 stopEventBtn.addEventListener("click", async () => {
-  if (!window.confirm("Pause the event? Market, trading, and all interest/FD accrual freeze. Resume anytime with Start.")) return;
+  if (!window.confirm("Pause the event? Market, trading, and all interest/FD accrual freeze. Resume anytime with Resume.")) return;
   stopEventBtn.disabled = true;
   try {
-    const res = await api("/api/teller/stop", "POST");
+    const res = await api("/api/teller/pause", "POST");
     renderEventControl(res);
     toast("Event paused", "ok");
   } catch (err) {

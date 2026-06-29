@@ -50,8 +50,8 @@ def _member_snapshot(conn, mid, now, eco):
             "holdings": [dict(h) for h in stock_repo.list_holdings(conn, mid)]}
 
 
-@router.post("/api/teller/start")
-async def t_start(request: Request, _: bool = Depends(require_staff)):
+@router.post("/api/teller/run")
+async def t_run(request: Request, _: bool = Depends(require_staff)):
     # Doubles as kickoff and resume: first call sets the clock (never reset mid-
     # event); a call while paused resumes (slides anchors past the paused gap).
     conn = request.app.state.conn
@@ -67,10 +67,10 @@ async def t_start(request: Request, _: bool = Depends(require_staff)):
     return {"started": True, "paused": False, "since": since, "elapsed_min": elapsed_min(conn)}
 
 
-@router.post("/api/teller/stop")
-async def t_stop(request: Request, _: bool = Depends(require_staff)):
+@router.post("/api/teller/pause")
+async def t_pause(request: Request, _: bool = Depends(require_staff)):
     # Freeze the event: market + trading + all interest/FD accrual stop at `now`.
-    # Idempotent; reversible via Start (resume). No-op before kickoff.
+    # Idempotent; reversible via /run (resume). No-op before kickoff.
     conn = request.app.state.conn
     async with MUTATION_LOCK:
         if event_start(conn) is not None:

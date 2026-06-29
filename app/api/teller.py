@@ -62,6 +62,8 @@ async def t_start(request: Request, _: bool = Depends(require_staff)):
         elif is_paused(conn):
             resume_event(conn, now)
         since = event_start(conn)
+    await request.app.state.broadcaster.publish({"type": "status",
+        "data": {"started": True, "paused": False, "elapsed_min": elapsed_min(conn)}})
     return {"started": True, "paused": False, "since": since, "elapsed_min": elapsed_min(conn)}
 
 
@@ -73,8 +75,12 @@ async def t_stop(request: Request, _: bool = Depends(require_staff)):
     async with MUTATION_LOCK:
         if event_start(conn) is not None:
             pause_event(conn, time.time())
-    return {"started": event_start(conn) is not None, "paused": is_paused(conn),
-            "elapsed_min": elapsed_min(conn)}
+    started = event_start(conn) is not None
+    paused = is_paused(conn)
+    em = elapsed_min(conn)
+    await request.app.state.broadcaster.publish({"type": "status",
+        "data": {"started": started, "paused": paused, "elapsed_min": em}})
+    return {"started": started, "paused": paused, "elapsed_min": em}
 
 
 @router.get("/api/member/{mid}")

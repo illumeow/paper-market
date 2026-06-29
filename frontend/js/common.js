@@ -37,9 +37,10 @@ export function fdTermSelect(opts, id = "fd-term") {
 export function fdTermRate(sel) {
   return parseFloat(sel.selectedOptions[0].dataset.rate);
 }
-export function stream(onPrices, onNews) {
+export function stream(onPrices, onNews, onStatus) {
   const es = new EventSource(BASE + "/api/stream");
   es.addEventListener("prices", e => onPrices(JSON.parse(e.data)));
   es.addEventListener("news", e => onNews(JSON.parse(e.data)));
+  if (onStatus) es.addEventListener("status", e => onStatus(JSON.parse(e.data)));
   return es;
 }

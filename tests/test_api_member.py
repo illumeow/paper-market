@@ -43,7 +43,7 @@ def test_bad_pin_rejected(client):
 
 def test_member_cannot_access_teller(client):
     _login_member(client, None)
-    assert client.get("/api/member/0-1").status_code == 403
+    assert client.post("/api/teller/lookup", json={"pin": "1159"}).status_code == 403
 
 
 def test_trade_blocked_before_start_then_allowed(client):

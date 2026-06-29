@@ -130,7 +130,7 @@ def test_teller_snapshot_debt_reflects_accrued_interest(client):
     bank_service.loan_disburse(conn, mid, principal, event_start_epoch, "teller", 1000)
 
     assert client.post("/api/login/staff", json={"password": "staffpw"}).status_code == 200
-    r = client.get(f"/api/member/{mid}")
+    r = client.post("/api/teller/lookup", json={"pin": "8191"})
     assert r.status_code == 200
     debt = r.json()["debt"]
     assert debt > principal, f"Expected live owed > {principal}, got {debt}"

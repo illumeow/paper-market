@@ -75,12 +75,13 @@ document.getElementById("close-lookup-btn").addEventListener("click", () => {
 
 // ── Lookup ───────────────────────────────────────────────
 lookupBtn.addEventListener("click", async () => {
-  const mid = memberIdInput.value.trim();
-  if (!mid) { toast("Enter a member ID", "err"); return; }
+  const pin = memberIdInput.value.trim();
+  if (!pin) { toast("Enter a member PIN", "err"); return; }
   lookupBtn.disabled = true;
   try {
-    const data = await api(`/api/member/${encodeURIComponent(mid)}`);
-    currentMid = mid;
+    const data = await api("/api/teller/lookup", "POST", { pin });
+    currentMid = data.member_id;   // resolved id drives every downstream op
+    memberIdInput.value = "";      // don't leave the PIN on screen
     memberPanel.classList.remove("hidden");
     if (data.locked) {
       showLocked(data.cooldown_remaining_sec);

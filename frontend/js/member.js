@@ -151,7 +151,7 @@ function renderMarket(market) {
         <span class="stock-price" id="price-${s.stock_id}">$${money(s.price)}</span>
       </div>
       <div class="trade-controls">
-        <span class="muted" id="held-${s.stock_id}" style="margin-right:auto">you hold: 0</span>
+        <span class="muted" id="held-${s.stock_id}" style="margin-right:auto">You Hold: 0</span>
         <input type="text" inputmode="numeric" value="1" id="shares-${s.stock_id}" placeholder="Quantity" />
         <button class="btn btn--success btn--sm" data-sid="${s.stock_id}" data-side="buy">Buy</button>
         <button class="btn btn--danger btn--sm"  data-sid="${s.stock_id}" data-side="sell">Sell</button>
@@ -192,7 +192,7 @@ function renderMarket(market) {
 function updateHeldDisplays() {
   for (const sid of marketIds) {
     const el = document.getElementById("held-" + sid);
-    if (el) el.textContent = "you hold: " + count(heldShares[sid] || 0);
+    if (el) el.textContent = "You Hold: " + count(heldShares[sid] || 0);
   }
 }
 

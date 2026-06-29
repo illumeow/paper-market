@@ -37,7 +37,7 @@ function renderTiles(stocks) {
     tile.className = "tile";
     tile.innerHTML = `
       <div class="t-head">
-        <span class="s-name">${s.name} <span class="muted">${s.stock_id}</span></span>
+        <span class="s-name">${s.name} <span class="muted">(${s.stock_id})</span></span>
         <span class="s-pct ${pctClass}" id="sum-pct-${s.stock_id}">${pctSign}${s.pct_change.toFixed(2)}%</span>
       </div>
       <div class="s-price" id="sum-price-${s.stock_id}">$${fmt(s.price)}</div>

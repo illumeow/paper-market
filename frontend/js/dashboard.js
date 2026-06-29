@@ -40,8 +40,10 @@ function renderTiles(stocks) {
         <span class="s-name">${s.name} <span class="muted">(${s.stock_id})</span></span>
         <span class="s-pct ${pctClass}" id="sum-pct-${s.stock_id}">${pctSign}${s.pct_change.toFixed(2)}%</span>
       </div>
-      <div class="s-price" id="sum-price-${s.stock_id}">$${fmt(s.price)}</div>
-      <div class="s-vol" id="sum-vol-${s.stock_id}">Vol: ${s.volume.toLocaleString()}</div>
+      <div class="t-priceline">
+        <span class="s-price" id="sum-price-${s.stock_id}">$${fmt(s.price)}</span>
+        <span class="s-vol" id="sum-vol-${s.stock_id}">Vol: ${s.volume.toLocaleString()}</span>
+      </div>
       <div class="t-chart"><canvas id="chart-${s.stock_id}"></canvas></div>`;
     tilesGrid.appendChild(tile);
     summaryCards[s.stock_id] = {

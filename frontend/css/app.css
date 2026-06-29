@@ -264,9 +264,10 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 }
 .tile .t-head { display: flex; justify-content: space-between; align-items: baseline; }
 .tile .s-name  { font-size: .85rem; color: var(--muted); }
-.tile .s-price { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .t-priceline { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.tile .s-price { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .tile .s-pct   { font-size: .9rem; font-weight: 600; }
-.tile .s-vol   { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+.tile .s-vol   { font-size: .78rem; color: var(--muted); white-space: nowrap; }
 .tile .t-chart { position: relative; margin-top: 8px; }
 .tile canvas   { width: 100% !important; }
 
@@ -315,11 +316,19 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 .dash--screen .dash-header { margin-bottom: 12px; }
 .dash--screen .dash-header h1 { font-size: 2rem; }
 .dash--screen #event-status, .dash--screen #last-update { font-size: 1.1rem; }
-/* News = fixed strip on top */
-.dash--screen .news-banner { margin-bottom: 12px; flex: 0 0 auto; }
-.dash--screen .news-banner h2 { font-size: 1.1rem; margin-bottom: 6px; }
-.dash--screen #news-feed { max-height: 84px; overflow: hidden; }
-.dash--screen .news-item { font-size: 1rem; }
+/* News = single latest headline as a slim banner (one line, older items hidden) */
+.dash--screen .news-banner { margin-bottom: 12px; flex: 0 0 auto; padding: 10px 16px; }
+.dash--screen .news-banner h2 { display: none; }
+.dash--screen #news-feed { overflow: hidden; }
+.dash--screen .news-item {
+  margin: 0;
+  font-size: 1.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash--screen .news-item::before { content: "📰 NEWS  "; color: var(--muted); font-weight: 700; }
+.dash--screen .news-item:not(:first-child) { display: none; }
 /* Tiles fill the rest; row 1 = 3 tiles, row 2 = 2 tiles centered */
 .dash--screen .tiles-grid {
   flex: 1 1 auto;

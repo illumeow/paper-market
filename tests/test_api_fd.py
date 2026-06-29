@@ -48,7 +48,7 @@ def test_me_exposes_options_and_enriched_fd(client):
     assert len(fd) == 1
     fd = fd[0]
     assert fd["payout"] > 1000          # maturity payout surfaced
-    assert fd["remaining_min"] == pytest.approx(30.0)
+    assert fd["remaining_min"] == pytest.approx(30.0, abs=0.05)   # abs budget: real wall-time elapses between open + read requests
     assert fd["matured"] is False
     assert "fd_id" not in fd            # bound to member, id not exposed
 

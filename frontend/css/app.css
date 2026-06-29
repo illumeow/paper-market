@@ -264,7 +264,7 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 }
 .tile .t-head { display: flex; justify-content: space-between; align-items: baseline; }
 .tile .s-name  { font-size: .85rem; color: var(--muted); }
-.tile .t-priceline { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.tile .t-priceline { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
 .tile .s-price { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .tile .s-pct   { font-size: .9rem; font-weight: 600; }
 .tile .s-vol   { font-size: .78rem; color: var(--muted); white-space: nowrap; }

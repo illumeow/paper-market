@@ -46,12 +46,14 @@
 /* News = latest headline only, as a one-line ticker banner: a coral "NEWS" tag + a larger headline */
 .dash--screen .news-banner { margin-bottom: 10px; flex: 0 0 auto; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
 .dash--screen .news-banner h2 { display: none; }
-.dash--screen #news-feed { overflow: hidden; font-size: 1.9rem; }
+.dash--screen #news-feed { overflow: hidden; }
 .dash--screen .news-item {
   display: flex; align-items: center; gap: 12px;
   margin: 0; padding: 0; background: none; border: none; border-radius: 0;
-  color: var(--brown); font-weight: 700; overflow: hidden;
+  color: var(--brown); font-weight: 700; font-size: 1.9rem; overflow: hidden;
 }
+/* font-size lives here (not on #news-feed): the base .news-item sets .9rem on
+   the element itself, so the headline never inherits #news-feed's size. */
 .dash--screen .news-item > div { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dash--screen .news-item::before {
   content: "NEWS"; flex: 0 0 auto; padding: 3px 10px; border-radius: 6px;

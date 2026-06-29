@@ -360,7 +360,10 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
   min-height: 0;
 }
 .dash--screen .tile {
-  flex: 0 0 calc(33.333% - 16px);
+  /* (100% - 2 gaps)/3 makes row 1's 3 tiles + 2 gaps span exactly 100%, so the
+     row is flush left/right and aligns with the header; row 2's 2 tiles still
+     center under it via the grid's justify-content:center. */
+  flex: 0 0 calc((100% - 32px) / 3);
   /* Pin each tile to half the grid height so the two rows (3 + 2) fill exactly
      one screen: 2 * (50% - 8px) + 16px row-gap = 100%. Without an explicit
      height the rows size to the chart's intrinsic height and the 2nd row is

@@ -136,7 +136,9 @@ function buildChart(s) {
 const newsFeed = document.getElementById("news-feed");
 function renderNews(newsItems) {
   if (!newsItems || newsItems.length === 0) {
-    newsFeed.innerHTML = '<span class="muted">No news yet.</span>';
+    // Keep the NEWS tag visible even with no news — the tag lives on .news-item::before
+    // (screen). Grayed placeholder text; .news-empty lets prependNews drop it on first news.
+    newsFeed.innerHTML = '<div class="news-item news-empty"><div class="muted">No news yet</div></div>';
     return;
   }
   newsFeed.innerHTML = newsItems.slice(0, 10).map(n => `
@@ -147,6 +149,8 @@ function renderNews(newsItems) {
 }
 
 function prependNews(n) {
+  const empty = newsFeed.querySelector(".news-empty");
+  if (empty) empty.remove();  // first real headline replaces the "No news yet" placeholder
   const div = document.createElement("div");
   div.className = "news-item";
   div.innerHTML = `<div>${escapeHtml(n.text)}</div>`;

@@ -38,9 +38,9 @@
   height: 100vh; max-width: none; margin: 0; padding: 16px 24px;
   display: flex; flex-direction: column; overflow: hidden;
 }
-/* Brown title bar stays, but drop the tile sticker ring (white die-cut halo looks
-   broken around the header/news on the projection) and give it inner padding. */
-.dash--screen .dash-header { margin-bottom: 10px; padding: 8px 18px; box-shadow: none; }
+/* Brown title bar keeps its sticker ring; the broken look was the title text
+   flush to the bar edge — fix is inner padding, not removing the white border. */
+.dash--screen .dash-header { margin-bottom: 10px; padding: 8px 18px; }
 .dash--screen .dash-header h1 { font-size: 1.4rem; }
 .dash--screen #event-status, .dash--screen #last-update { font-size: .95rem; }
 /* News = latest headline only, as a one-line ticker banner: a coral "NEWS" tag + a larger headline */

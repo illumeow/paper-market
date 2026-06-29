@@ -1,7 +1,9 @@
 /* dashboard.css — dashboard (phone) + screen (projection) layouts. Loaded after components.css.
    Both pages share frontend/js/dashboard.js. */
 
-.dash-header { margin-bottom: 18px; }
+.dash--phone .dash-header { margin-bottom: 18px; display: flex; flex-direction: column; align-items: stretch; padding: 12px 15px; gap: 3px }
+.dash--phone .dash-header-info { display: flex; flex-direction: column; gap: 6px; }
+.dash--phone .dash-header-status { display: flex; justify-content: space-between; align-items: center; }
 
 /* Fused tile (shared by both layouts) = cream sticker */
 .tile {

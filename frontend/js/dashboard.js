@@ -87,8 +87,8 @@ function buildChart(s) {
       datasets: [{
         label: s.name,
         data: points,
-        borderColor: "#6c8cff",
-        backgroundColor: "rgba(108,140,255,.12)",
+        borderColor: "#e89657",
+        backgroundColor: "rgba(232,150,87,.15)",
         borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -120,12 +120,12 @@ function buildChart(s) {
             for (let v = 0; v <= hi; v += step) ticks.push({ value: v });
             axis.ticks = ticks;
           },
-          ticks: { color: "#8892a4", maxRotation: 0, autoSkip: false },
-          grid:  { color: "#2e3350" },
+          ticks: { color: "#8a7d74", maxRotation: 0, autoSkip: false },
+          grid:  { color: "rgba(71,61,56,.12)" },
         },
         y: {
-          ticks: { color: "#8892a4", callback: v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
-          grid:  { color: "#2e3350" },
+          ticks: { color: "#8a7d74", callback: v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
+          grid:  { color: "rgba(71,61,56,.12)" },
         },
       },
     },

@@ -20,7 +20,7 @@
   color: var(--red);
   text-align: center;
 }
-.locked-badge .countdown { font-family: var(--font-pixel); font-size: 2rem; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.locked-badge .countdown { font-family: var(--font-body); font-size: 2rem; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
 
 /* Trade-on-behalf stock select: drop native chrome so it matches the adjacent input height */
 #trade-stock {

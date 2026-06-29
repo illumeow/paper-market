@@ -21,7 +21,7 @@ router = APIRouter()
 async def login_staff(request: Request):
     body = await request.json()
     if str(body.get("password", "")) != request.app.state.config.staff_password:
-        raise HTTPException(403, "wrong password")
+        raise HTTPException(403, "Wrong password")
     tok = make_token(request.app.state.config.secret_key, "staff")
     resp = JSONResponse({"ok": True})
     resp.set_cookie(COOKIE, tok, httponly=True, samesite="lax")
@@ -89,7 +89,7 @@ async def lookup(request: Request, _: bool = Depends(require_staff)):
     b = await request.json()
     m = bank_repo.get_member_by_pin(conn, pin_hash(str(b.get("pin", ""))))
     if not m:
-        raise HTTPException(404, "no such member")
+        raise HTTPException(404, "No such member")
     mid = m["member_id"]
     now = time.time()
     eco = request.app.state.config.economy
@@ -118,7 +118,7 @@ async def member_snapshot(request: Request, mid: str, _: bool = Depends(require_
     conn = request.app.state.conn
     m = bank_repo.get_member(conn, mid)
     if not m:
-        raise HTTPException(404, "no such member")
+        raise HTTPException(404, "No such member")
     now = time.time()
     async with MUTATION_LOCK:
         return _member_snapshot(conn, mid, now, _eco(request))

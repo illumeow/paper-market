@@ -18,7 +18,7 @@ def accrue_balance(conn, mid, now) -> float:
 
 def deposit(conn, mid, amount, now, actor):
     if amount <= 0:
-        raise BusinessError("amount must be positive")
+        raise BusinessError("Amount must be positive")
     bal = accrue_balance(conn, mid, now)
     repo.update_member(conn, mid, balance=bal + amount)
     repo.add_txn(conn, mid, "deposit", amount, now, actor)
@@ -26,20 +26,20 @@ def deposit(conn, mid, amount, now, actor):
 
 def withdraw(conn, mid, amount, now, actor):
     if amount <= 0:
-        raise BusinessError("amount must be positive")
+        raise BusinessError("Amount must be positive")
     bal = accrue_balance(conn, mid, now)
     if amount > bal:
-        raise BusinessError("insufficient balance")
+        raise BusinessError("Insufficient balance")
     repo.update_member(conn, mid, balance=bal - amount)
     repo.add_txn(conn, mid, "withdraw", -amount, now, actor)
 
 
 def loan_disburse(conn, mid, amount, now, actor, loan_cap):
     if amount <= 0 or amount > loan_cap:
-        raise BusinessError("invalid loan amount")
+        raise BusinessError("Invalid loan amount")
     m = repo.get_member(conn, mid)
     if m["debt"] > 0:
-        raise BusinessError("existing loan must be repaid first")
+        raise BusinessError("Existing loan must be repaid first")
     bal = accrue_balance(conn, mid, now)
     repo.update_member(conn, mid, balance=bal + amount, debt=amount, loan_taken_at=now)
     repo.add_txn(conn, mid, "loan_out", amount, now, actor)
@@ -47,16 +47,16 @@ def loan_disburse(conn, mid, amount, now, actor, loan_cap):
 
 def loan_repay(conn, mid, amount, now, actor):
     if amount <= 0:
-        raise BusinessError("amount must be positive")
+        raise BusinessError("Amount must be positive")
     m = repo.get_member(conn, mid)
     if m["debt"] <= 0:
-        raise BusinessError("no outstanding loan")
+        raise BusinessError("No outstanding loan")
     elapsed = accrued_minutes(conn, m["loan_taken_at"], now)
     owed = float(loan_owed(m["debt"], elapsed))
     bal = accrue_balance(conn, mid, now)
     pay = min(amount, owed)
     if pay > bal:
-        raise BusinessError("insufficient balance to repay")
+        raise BusinessError("Insufficient balance to repay")
     new_debt = owed - pay
     repo.update_member(conn, mid, balance=bal - pay, debt=new_debt,
                        loan_taken_at=(None if new_debt == 0 else now))
@@ -80,16 +80,16 @@ def loan_owed_now(conn, mid, now) -> float:
 def fd_open(conn, mid, principal, term, now, actor, *, demand_rate, fd_rate_30,
             fd_rate_60, event_duration_min):
     if term not in (30, 60):
-        raise BusinessError("term must be 30 or 60")
+        raise BusinessError("Term must be 30 or 60")
     if principal <= 0:
-        raise BusinessError("principal must be positive")
+        raise BusinessError("Principal must be positive")
     if repo.open_fds(conn, mid):
-        raise BusinessError("member already has an open fixed deposit")
+        raise BusinessError("Member already has an open FD")
     if elapsed_min(conn, now) + term > event_duration_min:
-        raise BusinessError("past opening cutoff")
+        raise BusinessError("Past opening cutoff")
     bal = accrue_balance(conn, mid, now)
     if principal > bal:
-        raise BusinessError("insufficient balance")
+        raise BusinessError("Insufficient balance")
     rate = fd_rate_30 if term == 30 else fd_rate_60
     fd_id = uuid.uuid4().hex[:12]
     repo.update_member(conn, mid, balance=bal - principal)
@@ -101,7 +101,7 @@ def fd_open(conn, mid, principal, term, now, actor, *, demand_rate, fd_rate_30,
 def fd_close(conn, mid, fd_id, now, actor, *, demand_rate):
     fd = repo.get_fd(conn, fd_id)
     if fd is None or fd["closed"] or fd["member_id"] != mid:
-        raise BusinessError("invalid fixed deposit")
+        raise BusinessError("Invalid FD")
     elapsed = accrued_minutes(conn, fd["created_at"], now)
     if elapsed >= fd["term_minutes"]:
         payout = float(fd_maturity(fd["principal"], fd["term_minutes"], fd["rate_per_min"]))
@@ -119,7 +119,7 @@ def fd_close_current(conn, mid, now, actor, *, demand_rate):
     """Close the member's single open FD (one-FD-per-member invariant) — no fd_id needed."""
     fds = repo.open_fds(conn, mid)
     if not fds:
-        raise BusinessError("no open fixed deposit")
+        raise BusinessError("No open FD")
     fd_close(conn, mid, fds[0]["fd_id"], now, actor, demand_rate=demand_rate)
 
 

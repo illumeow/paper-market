@@ -78,4 +78,4 @@ def test_teller_close_by_member_no_fd_id(client):
                        json={"id": "0-3", "principal": 1000, "term": 30}).status_code == 200
     assert client.post("/api/teller/fd/close", json={"id": "0-3"}).status_code == 200  # no fd_id
     r = client.post("/api/teller/fd/close", json={"id": "0-3"})
-    assert r.status_code == 400 and r.json()["detail"] == "no open fixed deposit"
+    assert r.status_code == 400 and r.json()["detail"] == "No open FD"

@@ -18,11 +18,11 @@ async def login_member(request: Request):
     body = await request.json()
     ip = request.client.host if request.client else "?"
     if not request.app.state.rate_limiter.check(ip):
-        raise HTTPException(429, "too many attempts")
+        raise HTTPException(429, "Too many attempts")
     conn = request.app.state.conn
     m = bank_repo.get_member(conn, str(body.get("member_id", "")))
     if not m or m["pin"] != pin_hash(str(body.get("pin", ""))):
-        raise HTTPException(401, "invalid member ID or PIN")
+        raise HTTPException(401, "Invalid member ID or PIN")
     tok = make_token(request.app.state.config.secret_key, "member", m["member_id"])
     resp = JSONResponse({"member_id": m["member_id"]})
     resp.set_cookie(COOKIE, tok, httponly=True, samesite="lax")

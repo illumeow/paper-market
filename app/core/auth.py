@@ -33,14 +33,14 @@ def _session(request: Request):
 def require_member(request: Request):
     s = _session(request)
     if not s or s["role"] != "member":
-        raise HTTPException(401, "login required")
+        raise HTTPException(401, "Login required")
     return s["member_id"]
 
 
 def require_staff(request: Request):
     s = _session(request)
     if not s or s["role"] != "staff":
-        raise HTTPException(403, "staff only")
+        raise HTTPException(403, "Staff only")
     return True
 
 

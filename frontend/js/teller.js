@@ -374,7 +374,7 @@ startEventBtn.addEventListener("click", async () => {
   try {
     const res = await api("/api/teller/start", "POST");
     renderEventControl({ started: true, paused: false, elapsed_min: res.elapsed_min });
-    toast(resuming ? "Event resumed!" : "Event started!", "ok");
+    toast(resuming ? "Event resumed" : "Event started!", "ok");
   } catch (err) {
     toast(err.message, "err");
   } finally {
@@ -388,7 +388,7 @@ stopEventBtn.addEventListener("click", async () => {
   try {
     const res = await api("/api/teller/stop", "POST");
     renderEventControl(res);
-    toast("Event paused.", "ok");
+    toast("Event paused", "ok");
   } catch (err) {
     toast(err.message, "err");
   } finally {

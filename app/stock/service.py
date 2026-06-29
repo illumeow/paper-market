@@ -9,10 +9,10 @@ from app.core.errors import BusinessError
 
 def execute_trade(conn, mid, sid, side, shares, now, actor, *, tuning, noise_scale, rng=_random):
     if shares <= 0 or side not in ("buy", "sell"):
-        raise BusinessError("invalid trade")
+        raise BusinessError("Invalid trade")
     s = repo.get_stock(conn, sid)
     if s is None:
-        raise BusinessError("unknown stock")
+        raise BusinessError("Unknown stock")
     price = s["price"]
     cost = float(Decimal(str(price)) * shares)
     bal = accrue_balance(conn, mid, now)
@@ -20,13 +20,13 @@ def execute_trade(conn, mid, sid, side, shares, now, actor, *, tuning, noise_sca
 
     if side == "buy":
         if cost > bal:
-            raise BusinessError("insufficient cash")
+            raise BusinessError("Insufficient cash")
         update_member(conn, mid, balance=bal - cost)
         repo.set_holding(conn, mid, sid, held + shares)
         signed = shares
     else:
         if shares > held:
-            raise BusinessError("insufficient shares")
+            raise BusinessError("Insufficient shares")
         update_member(conn, mid, balance=bal + cost)
         repo.set_holding(conn, mid, sid, held - shares)
         signed = -shares

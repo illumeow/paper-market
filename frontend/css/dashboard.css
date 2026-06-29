@@ -50,7 +50,7 @@
 .dash--screen .news-item {
   display: flex; align-items: center; gap: 12px;
   margin: 0; padding: 0; background: none; border: none; border-radius: 0;
-  color: var(--brown); font-weight: 700; font-size: 1.9rem; overflow: hidden;
+  color: var(--brown); font-weight: 700; font-size: 1.2rem; line-height: 1; overflow: hidden;
 }
 /* font-size lives here (not on #news-feed): the base .news-item sets .9rem on
    the element itself, so the headline never inherits #news-feed's size. */

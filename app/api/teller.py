@@ -90,14 +90,20 @@ async def lookup(request: Request, mid: str, _: bool = Depends(require_staff)):
     if not m:
         raise HTTPException(404, "no such member")
     now = time.time()
-    locked, remaining = visit_status(m["last_teller_visit_at"], now,
-                                     request.app.state.config.economy["cooldown_min"],
-                                     time_scale=time_scale())
-    if locked:
-        return {"member_id": mid, "locked": True, "cooldown_remaining_sec": int(remaining)}
     eco = request.app.state.config.economy
+    # The teller-visit cooldown applies only while the event is live. Before
+    # kickoff and while paused, staff can look members up freely: the lock is
+    # not checked and the visit is NOT recorded, so the live cooldown starts
+    # fresh at kickoff/resume instead of inheriting a setup-time visit.
+    running = event_start(conn) is not None and not is_paused(conn)
+    if running:
+        locked, remaining = visit_status(m["last_teller_visit_at"], now,
+                                         eco["cooldown_min"], time_scale=time_scale())
+        if locked:
+            return {"member_id": mid, "locked": True, "cooldown_remaining_sec": int(remaining)}
     async with MUTATION_LOCK:
-        bank_repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
+        if running:
+            bank_repo.update_member(conn, mid, last_teller_visit_at=now)  # start the visit
         return _member_snapshot(conn, mid, now, eco)
 
 

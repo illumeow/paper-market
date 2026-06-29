@@ -35,6 +35,7 @@ let currentMid = null;
 let currentDebt = 0;
 let countdownInterval = null;
 let cooldownDeadline = null;
+let cooldownPausedAt = null;   // wall ms when the event paused (cooldown frozen); null while running
 
 // ── Login ────────────────────────────────────────────────
 loginBtn.addEventListener("click", async () => {
@@ -105,12 +106,26 @@ function showLocked(remaining) {
 }
 function updateCountdown() {
   if (cooldownDeadline == null) return;
-  const secs = Math.max(0, Math.ceil((cooldownDeadline - Date.now()) / 1000));
+  // While paused, freeze "now" at the pause instant so the displayed remaining holds.
+  const nowMs = cooldownPausedAt != null ? cooldownPausedAt : Date.now();
+  const secs = Math.max(0, Math.ceil((cooldownDeadline - nowMs) / 1000));
   countdownEl.textContent = secs;
-  if (secs <= 0) {
+  if (cooldownPausedAt == null && secs <= 0) {
     clearInterval(countdownInterval);
     cooldownDeadline = null;
     toast("Cooldown expired — refresh the lookup", "ok");
+  }
+}
+
+// Freeze the visit-cooldown countdown while the event is not running; on resume
+// push the deadline forward by the paused wall-time so it continues instead of
+// "rewinding". Idempotent — safe to call on every status update / poll.
+function setCooldownRunning(running) {
+  if (!running && cooldownPausedAt == null) {
+    cooldownPausedAt = Date.now();
+  } else if (running && cooldownPausedAt != null) {
+    if (cooldownDeadline != null) cooldownDeadline += Date.now() - cooldownPausedAt;
+    cooldownPausedAt = null;
   }
 }
 
@@ -314,6 +329,7 @@ const startEventBtn   = document.getElementById("start-event-btn");
 const stopEventBtn    = document.getElementById("stop-event-btn");
 
 function renderEventControl(data) {
+  setCooldownRunning(!!data.started && !data.paused);
   const elapsed = Math.round(data.elapsed_min || 0);
   if (!data.started) {
     eventStatusLine.textContent = "Event not started.";

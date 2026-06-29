@@ -36,9 +36,30 @@ def test_staff_deposit_then_export(client):
 
 def test_cooldown_locks_second_lookup(client):
     _staff(client)
+    client.post("/api/teller/start")  # cooldown applies only while the event is live
     client.get("/api/member/0-2")
     second = client.get("/api/member/0-2").json()
     assert second["locked"] is True and second["cooldown_remaining_sec"] > 0
+
+
+def test_lookup_cooldown_disabled_before_kickoff(client):
+    # Pre-kickoff: repeated lookups never lock and don't record a visit, so the
+    # live cooldown starts fresh at kickoff.
+    _staff(client)
+    assert client.get("/api/member/0-2").json()["locked"] is False
+    assert client.get("/api/member/0-2").json()["locked"] is False   # still open, no cooldown
+    client.post("/api/teller/start")
+    assert client.get("/api/member/0-2").json()["locked"] is False   # first live visit, fresh
+    assert client.get("/api/member/0-2").json()["locked"] is True    # second within window → locked
+
+
+def test_lookup_cooldown_disabled_while_paused(client):
+    # Paused mirrors pre-kickoff: lookups don't trip the cooldown.
+    _staff(client)
+    client.post("/api/teller/start")
+    client.post("/api/teller/stop")
+    assert client.get("/api/member/0-2").json()["locked"] is False
+    assert client.get("/api/member/0-2").json()["locked"] is False
 
 
 def test_session_probe_requires_staff(client):

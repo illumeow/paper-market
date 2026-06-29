@@ -1,14 +1,4 @@
-import { api, url, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "./common.js";
-
-// ── Toast ────────────────────────────────────────────────
-const toastEl = document.getElementById("toast");
-let toastTimer;
-function toast(msg, type = "ok") {
-  clearTimeout(toastTimer);
-  toastEl.textContent = msg;
-  toastEl.className = `show toast-${type}`;
-  toastTimer = setTimeout(() => { toastEl.className = ""; }, 3500);
-}
+import { api, url, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast } from "./common.js";
 
 // ── DOM refs ─────────────────────────────────────────────
 const loginSection    = document.getElementById("login-section");

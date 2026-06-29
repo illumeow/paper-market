@@ -1,14 +1,4 @@
-import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate } from "./common.js";
-
-// ── Toast helper ────────────────────────────────────────
-const toastEl = document.getElementById("toast");
-let toastTimer;
-function toast(msg, type = "ok") {
-  clearTimeout(toastTimer);
-  toastEl.textContent = msg;
-  toastEl.className = `show toast-${type}`;
-  toastTimer = setTimeout(() => { toastEl.className = ""; }, 3200);
-}
+import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast } from "./common.js";
 
 // ── State ───────────────────────────────────────────────
 let prices = {}; // stock_id -> current price (live)

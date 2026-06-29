@@ -4,6 +4,12 @@ from app.core.clock import elapsed_min, accrued_minutes, effective_now
 from app.core.errors import BusinessError
 from app.bank.interest import demand_balance, loan_owed, fd_maturity, fd_early_exit
 
+# Below half a cent the debt is display-zero ("$0.00") anyway. Snapping a
+# residual this small to 0 at repayment stops it from surviving as an invisible
+# loan that re-anchors and keeps compounding — the boundary mirrors the
+# round-half-up-to-whole-unit applied at export.
+SETTLE_EPSILON = 0.005
+
 
 def accrue_balance(conn, mid, now) -> float:
     m = repo.get_member(conn, mid)
@@ -58,9 +64,28 @@ def loan_repay(conn, mid, amount, now, actor):
     if pay > bal:
         raise BusinessError("Insufficient balance to repay")
     new_debt = owed - pay
+    if new_debt < SETTLE_EPSILON:
+        new_debt = 0.0   # snap a sub-cent residual closed (see SETTLE_EPSILON)
     repo.update_member(conn, mid, balance=bal - pay, debt=new_debt,
                        loan_taken_at=(None if new_debt == 0 else now))
     repo.add_txn(conn, mid, "loan_repay", -pay, now, actor)
+
+
+def loan_settle(conn, mid, now, actor):
+    """Pay off a loan in full at the exact full-precision amount owed and close
+    it. Repaying the rounded displayed figure (and the teller route's whole-unit
+    amount) can leave a fractional residual that never clears; settle charges the
+    precise owed so debt always reaches 0."""
+    m = repo.get_member(conn, mid)
+    if m["debt"] <= 0:
+        raise BusinessError("No outstanding loan")
+    elapsed = accrued_minutes(conn, m["loan_taken_at"], now)
+    owed = float(loan_owed(m["debt"], elapsed))
+    bal = accrue_balance(conn, mid, now)
+    if owed > bal:
+        raise BusinessError("Insufficient balance to settle")
+    repo.update_member(conn, mid, balance=bal - owed, debt=0.0, loan_taken_at=None)
+    repo.add_txn(conn, mid, "loan_repay", -owed, now, actor)
 
 
 def loan_owed_now(conn, mid, now) -> float:

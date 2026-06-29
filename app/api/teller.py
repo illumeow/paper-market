@@ -160,6 +160,14 @@ async def t_repay(request: Request, _: bool = Depends(require_staff), __: bool =
         return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
+@router.post("/api/teller/settle")
+async def t_settle(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
+    b = await request.json(); conn = request.app.state.conn; now = time.time()
+    async with MUTATION_LOCK:
+        bank_service.loan_settle(conn, b["id"], now, "teller")
+        return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
+
+
 @router.post("/api/teller/fd/open")
 async def t_fd_open(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); eco = _eco(request); conn = request.app.state.conn; now = time.time()

@@ -185,10 +185,11 @@ async def t_trade(request: Request, _: bool = Depends(require_staff), __: bool =
 
 
 @router.post("/api/teller/news")
-async def t_news(request: Request, _: bool = Depends(require_staff)):
+async def t_news(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json()
     # insert only; the ticker broadcasts it once via the last_news_id cursor (<=tick_seconds later)
-    stock_repo.add_news(request.app.state.conn, b["text"], "manual", time.time())
+    async with MUTATION_LOCK:
+        stock_repo.add_news(request.app.state.conn, b["text"], "manual", time.time())
     return {"ok": True}
 
 

@@ -130,11 +130,13 @@ def test_banking_ops_blocked_when_paused(client):
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 409
     assert client.post("/api/teller/withdraw", json={"id": "0-1", "amount": 100}).status_code == 409
     assert client.post("/api/teller/fd/open", json={"id": "0-1", "principal": 100, "term": 30}).status_code == 409
+    assert client.post("/api/teller/news", json={"text": "x"}).status_code == 409   # news is a write → frozen
     assert client.get("/api/member/0-1").status_code == 200          # read still works
     assert client.get("/api/export").status_code == 200              # export still works
     # resume re-opens banking
     client.post("/api/teller/start")
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
+    assert client.post("/api/teller/news", json={"text": "x"}).status_code == 200
 
 
 def test_banking_blocked_before_kickoff(client):
@@ -142,6 +144,7 @@ def test_banking_blocked_before_kickoff(client):
     _staff(client)
     r = client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100})
     assert r.status_code == 409 and r.json()["detail"] == "event not started"
+    assert client.post("/api/teller/news", json={"text": "x"}).status_code == 409  # news frozen too
     client.post("/api/teller/start")
     assert client.post("/api/teller/deposit", json={"id": "0-1", "amount": 100}).status_code == 200
 

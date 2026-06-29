@@ -216,7 +216,7 @@ const eventStatusEl = document.getElementById("event-status");
 
 function updateEventStatus(started, elapsed_min, paused) {
   if (!started) {
-    eventStatusEl.textContent = "⏳ Event not started";
+    eventStatusEl.textContent = "Event not started";
     eventStatusEl.style.color = "var(--coral)";
     return;
   }

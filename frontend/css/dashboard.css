@@ -13,6 +13,8 @@
 }
 .tile .t-head { display: flex; justify-content: space-between; align-items: baseline; }
 .tile .s-name { font-family: var(--font-pixel); font-size: .9rem; color: var(--brown); }
+/* Pixelify renders ( ) as angular bracket-like glyphs; show the (ID) in body font. */
+.tile .s-name .muted { font-family: var(--font-body); }
 .tile .t-priceline { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
 .tile .s-price { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .tile .s-pct { font-size: .9rem; font-weight: 800; }

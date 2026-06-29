@@ -195,8 +195,10 @@ function onPrices(updates) {
       chart.update("none");
     }
   }
-  document.getElementById("last-update").textContent =
-    "Updated " + new Date().toLocaleTimeString();
+  // #last-update exists only on the projection screen (removed from the phone
+  // dashboard); guard so the shared handler doesn't throw where it's absent.
+  const lastUpdate = document.getElementById("last-update");
+  if (lastUpdate) lastUpdate.textContent = "Updated " + new Date().toLocaleTimeString();
 }
 
 // ── Stream with auto-reconnect ────────────────────────────

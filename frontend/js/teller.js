@@ -346,13 +346,13 @@ function renderEventControl(data) {
     startEventBtn.style.display = "";
     stopEventBtn.style.display = "none";
   } else if (data.paused) {
-    eventStatusLine.textContent = `Event paused — elapsed ${elapsed} min`;
+    eventStatusLine.textContent = `Event paused (elapsed ${elapsed} min)`;
     eventStatusLine.className = "muted";
     startEventBtn.textContent = "Resume Event";
     startEventBtn.style.display = "";
     stopEventBtn.style.display = "none";
   } else {
-    eventStatusLine.textContent = `Event running — elapsed ${elapsed} min`;
+    eventStatusLine.textContent = `Event running (elapsed ${elapsed} min)`;
     eventStatusLine.className = "pos";
     startEventBtn.style.display = "none";
     stopEventBtn.style.display = "";

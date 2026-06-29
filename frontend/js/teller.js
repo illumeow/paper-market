@@ -53,7 +53,6 @@ loginBtn.addEventListener("click", async () => {
     loginBtn.disabled = false;
   }
 });
-staffPw.addEventListener("keydown", e => { if (e.key === "Enter") loginBtn.click(); });
 
 // ── Export ───────────────────────────────────────────────
 exportBtn.addEventListener("click", () => { window.location = url("/api/export"); });
@@ -94,7 +93,6 @@ lookupBtn.addEventListener("click", async () => {
     lookupBtn.disabled = false;
   }
 });
-memberIdInput.addEventListener("keydown", e => { if (e.key === "Enter") lookupBtn.click(); });
 
 // ── Show locked ───────────────────────────────────────────
 function showLocked(remaining) {
@@ -225,6 +223,7 @@ function renderFdOps(data) {
       : "";
   }
   principal.addEventListener("input", updatePreview);
+  enterClicks("fd-principal", "fd-open-btn");   // dynamic field — re-wired each render
   term.addEventListener("change", updatePreview);
   document.getElementById("fd-open-btn").addEventListener("click", async () => {
     if (!currentMid) { toast("Lookup a member first", "err"); return; }
@@ -321,6 +320,24 @@ document.getElementById("news-btn").addEventListener("click", async () => {
     toast(err.message, "err");
   }
 });
+
+// ── Enter-to-submit ───────────────────────────────────────
+// Every input fires its action button on Enter. fd-principal is wired in
+// renderFdOps instead — its markup is rebuilt on each lookup.
+function enterClicks(inputId, buttonId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById(buttonId).click(); }
+  });
+}
+enterClicks("staff-pw",       "login-btn");
+enterClicks("member-id-input","lookup-btn");
+enterClicks("deposit-amt",    "deposit-btn");
+enterClicks("withdraw-amt",   "withdraw-btn");
+enterClicks("loan-repay-amt", "loan-repay-btn");
+enterClicks("trade-shares",   "trade-buy-btn");   // Enter on quantity = Buy
+enterClicks("news-text",      "news-btn");
 
 // ── Event Control ─────────────────────────────────────────
 // Three states from {started, paused}: not-started → Start; running → Pause;

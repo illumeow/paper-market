@@ -46,7 +46,7 @@
 /* News = latest headline only, as a one-line ticker banner: a coral "NEWS" tag + a larger headline */
 .dash--screen .news-banner { margin-bottom: 10px; flex: 0 0 auto; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
 .dash--screen .news-banner h2 { display: none; }
-.dash--screen #news-feed { overflow: hidden; font-size: 1.5rem; }
+.dash--screen #news-feed { overflow: hidden; font-size: 1.9rem; }
 .dash--screen .news-item {
   display: flex; align-items: center; gap: 12px;
   margin: 0; padding: 0; background: none; border: none; border-radius: 0;

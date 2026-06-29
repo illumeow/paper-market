@@ -1,0 +1,52 @@
+/* tokens.css — palette, fonts, reset, base type, helpers. Loaded first on every page. */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Pixelify+Sans:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sky:       #a6d9e8;
+  --cream:     #fbf4e4;
+  --cream-2:   #fffaf0;
+  --brown:     #473d38;
+  --coral:     #e89657;
+  --coral-deep:#d97e3d;
+  --teal:      #5fa89c;
+  --teal-deep: #4f9387;
+  --red:       #d85a4a;
+  --red-deep:  #c44a3b;
+  --text:      #473d38;
+  --muted:     #8a7d74;
+  --border:    #e4d9c2;
+  --line:      rgba(71,61,56,.12);
+  --radius:    16px;
+  --radius-sm: 10px;
+  /* die-cut sticker: white ring + chunky offset + soft shadow */
+  --sticker:   0 0 0 3px #ffffff, 0 8px 0 -2px rgba(71,61,56,.12), 0 16px 28px rgba(71,61,56,.14);
+  --shadow-sm: 0 3px 0 rgba(71,61,56,.10);
+  --font-pixel:"Pixelify Sans", monospace;
+  --font-body: "Nunito", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+}
+
+html, body {
+  background: var(--sky);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+h1 { font-family: var(--font-pixel); font-weight: 700; font-size: 1.6rem; letter-spacing: .01em; }
+h2 { font-family: var(--font-pixel); font-weight: 600; font-size: 1.2rem; margin-bottom: 10px; }
+h3 { font-family: var(--font-pixel); font-weight: 600; font-size: 1rem; }
+
+.muted { color: var(--muted); font-size: .88rem; }
+.money { font-variant-numeric: tabular-nums; }
+.pos   { color: var(--teal); }
+.neg   { color: var(--red); }
+.warn  { color: var(--coral); }
+.hidden { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

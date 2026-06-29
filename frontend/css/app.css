@@ -302,5 +302,43 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+/* ── Projection layout: no scroll, everything on one 16:9 screen ── */
+.dash--screen {
+  height: 100vh;
+  max-width: none;
+  margin: 0;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dash--screen .dash-header { margin-bottom: 12px; }
+.dash--screen .dash-header h1 { font-size: 2rem; }
+.dash--screen #event-status, .dash--screen #last-update { font-size: 1.1rem; }
+/* News = fixed strip on top */
+.dash--screen .news-banner { margin-bottom: 12px; flex: 0 0 auto; }
+.dash--screen .news-banner h2 { font-size: 1.1rem; margin-bottom: 6px; }
+.dash--screen #news-feed { max-height: 84px; overflow: hidden; }
+.dash--screen .news-item { font-size: 1rem; }
+/* Tiles fill the rest; row 1 = 3 tiles, row 2 = 2 tiles centered */
+.dash--screen .tiles-grid {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: stretch;
+  gap: 16px;
+  min-height: 0;
+}
+.dash--screen .tile {
+  flex: 0 0 calc(33.333% - 16px);
+  min-height: 0;
+}
+.dash--screen .tile .s-name  { font-size: 1.3rem; }
+.dash--screen .tile .s-price { font-size: 2.6rem; }
+.dash--screen .tile .s-pct   { font-size: 1.5rem; }
+.dash--screen .tile .s-vol   { font-size: 1rem; }
+.dash--screen .tile .t-chart { flex: 1 1 auto; min-height: 0; }
+
 /* ── Hidden ────────────────────────────────────────────── */
 .hidden { display: none !important; }

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paper Market — Screen</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <!-- Chart.js via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="dash dash--screen">
+  <div class="page-header dash-header">
+    <h1>Market Dashboard</h1>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+      <span id="event-status" class="muted"></span>
+      <span id="last-update" class="muted"></span>
+    </div>
+  </div>
+
+  <!-- News banner -->
+  <div class="card news-banner">
+    <h2>News Feed</h2>
+    <div id="news-feed"></div>
+  </div>
+
+  <!-- Per-stock fused tiles (price + pct + vol + chart) -->
+  <div id="tiles-grid" class="tiles-grid"></div>
+</div>
+
+<script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

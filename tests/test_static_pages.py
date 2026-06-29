@@ -18,6 +18,14 @@ def client(tmp_path, monkeypatch):
     return TestClient(create_app())
 
 
+def test_screen_is_projection_layout(client):
+    r = client.get("/screen")
+    assert r.status_code == 200
+    assert "dash--screen" in r.text
+    assert 'id="tiles-grid"' in r.text
+    assert 'src="js/dashboard.js"' in r.text
+
+
 def test_dashboard_is_phone_layout(client):
     r = client.get("/dashboard")
     assert r.status_code == 200

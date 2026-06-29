@@ -20,7 +20,7 @@ function minSinceKickoff(ts) {
 let eventStart = null;
 let timeScale = 1;   // event-minutes per real-minute; from /api/dashboard (TIME_SCALE)
 const charts = {}; // stock_id -> Chart instance
-const summaryCards = {}; // stock_id -> { priceEl, pctEl }
+const summaryCards = {}; // stock_id -> { priceEl, pctEl, volEl }
 const initPrice = {}; // stock_id -> init_price, for the (0, init) chart anchor
 
 // ── Render fused tiles (price + pct + vol + chart per stock) ─
@@ -194,7 +194,7 @@ function onPrices(updates) {
       // trimming below that would empty the left while min stays pinned at 0.
       if (ds.length > 2000) ds.shift();
       // Track the right edge to the newest point so the line always reaches the
-      // axis end (mirrors the min:0 / max:last anchoring set in renderCharts).
+      // axis end (mirrors the min:0 / max:last anchoring set in buildChart).
       chart.options.scales.x.max = nowMin;
       chart.update("none");
     }

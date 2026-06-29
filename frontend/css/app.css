@@ -313,15 +313,20 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
   flex-direction: column;
   overflow: hidden;
 }
-.dash--screen .dash-header { margin-bottom: 12px; }
-.dash--screen .dash-header h1 { font-size: 2rem; }
-.dash--screen #event-status, .dash--screen #last-update { font-size: 1.1rem; }
+/* Slim header bar */
+.dash--screen .dash-header { margin-bottom: 8px; padding: 6px 0 8px; }
+.dash--screen .dash-header h1 { font-size: 1.4rem; }
+.dash--screen #event-status, .dash--screen #last-update { font-size: .95rem; }
 /* News = single latest headline as a slim banner (one line, older items hidden) */
 .dash--screen .news-banner { margin-bottom: 12px; flex: 0 0 auto; padding: 10px 16px; }
 .dash--screen .news-banner h2 { display: none; }
 .dash--screen #news-feed { overflow: hidden; }
 .dash--screen .news-item {
   margin: 0;
+  padding: 0;
+  background: none;
+  border-left: none;
+  border-radius: 0;
   font-size: 1.15rem;
   white-space: nowrap;
   overflow: hidden;

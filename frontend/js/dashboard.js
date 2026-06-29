@@ -221,16 +221,16 @@ const eventStatusEl = document.getElementById("event-status");
 function updateEventStatus(started, elapsed_min, paused) {
   if (!started) {
     eventStatusEl.textContent = "⏳ Event not started";
-    eventStatusEl.style.color = "var(--yellow)";
+    eventStatusEl.style.color = "var(--coral)";
     return;
   }
   const elapsed = Math.round(elapsed_min);
   if (paused) {
     eventStatusEl.textContent = `⏸ Paused · elapsed ${elapsed} min`;
-    eventStatusEl.style.color = "var(--yellow)";
+    eventStatusEl.style.color = "var(--coral)";
   } else {
     eventStatusEl.textContent = `● Live · elapsed ${elapsed} min`;
-    eventStatusEl.style.color = "var(--green)";
+    eventStatusEl.style.color = "var(--teal)";
   }
 }
 

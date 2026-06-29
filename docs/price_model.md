@@ -49,10 +49,10 @@ The knobs pair up by what they control:
 - **`momentum_strength` + `momentum_decay` → momentum.** After a 10-share buy, `flow_momentum = 10` and
   `momentum = 0.002·10 = +2%` on the next tick → rails toward the band edge, then
   decays ×0.95/tick (half-life ≈ 14 ticks). The model is punchy by design.
-- **`reversion_strength` + `market_share_baseline` + `pressure_normalizer` → slow anti-inflation.** Net-buying 1000 shares
-  past `market_share_baseline` gives `supply_pressure = −0.02·1000/10000 = −0.2%/tick` — a gentle,
-  persistent pull back to baseline. This is the term that, mis-anchored, caused the
-  cold-start drift bug (see below).
+- **`reversion_strength` + `market_share_baseline` + `pressure_normalizer` → anti-inflation.** With `market_share_baseline = 0`,
+  net-buying 1000 shares gives `supply_pressure = −0.02·1000/1000 = −2%/tick` — a persistent pull back
+  toward the baseline float. `market_share_baseline` is a tunable *offset*: shifting it and the cold-start
+  `total_market_shares` together moves the equilibrium without changing any dynamics (see cold-start below).
 
 ## Per-stock constants — `[[stocks]]`
 
@@ -61,7 +61,7 @@ The knobs pair up by what they control:
 | `init_price` | starting price **and** the initial `quarter_open` (first band anchor) |
 | `floor` / `ceiling` | **hard** absolute price clamps (provisioned at 0.3× / 3× `init_price`); never breached, even by events |
 | `pressure_normalizer` | normalizer for `supply_pressure` — the "total float" scale (1000) |
-| `market_share_baseline` | equilibrium-holdings anchor and mean-reversion target (3000); also the cold-start value of `total_market_shares` |
+| `market_share_baseline` | mean-reversion target / equilibrium-holdings anchor (**0**); a tunable offset for `supply_pressure`. Cold-start `total_market_shares` is provisioned to **0** to match, so `supply_pressure = 0` at kickoff |
 
 ## Per-stock state (evolves in the DB)
 
@@ -69,9 +69,9 @@ The knobs pair up by what they control:
 |---|---|
 | `price` | current price, carried tick → tick |
 | `quarter_open` | price at the start of the current 30-min quarter; the soft band is measured off this. Reset on each `quarter_min` rollover |
-| `band_floor_pct` / `band_ceiling_pct` | the **soft** band, ±0.30 at quarter start. Organic moves clamp here; events bypass it and **ratchet** these wider |
+| `band_floor_pct` / `band_ceiling_pct` | the **soft** band, seeded per-stock from config (±0.30) and reset to it each quarter start. Organic moves clamp here; events bypass it and **ratchet** these wider |
 | `flow_momentum` | decaying signed-share momentum accumulator |
-| `total_market_shares` | cumulative net shares (buys − sells), provisioned to `market_share_baseline`; drives `supply_pressure`. Only a price-model anchor — real holdings live in the `holdings` table |
+| `total_market_shares` | cumulative net shares (buys − sells), provisioned to **0** (no shares traded yet); drives `supply_pressure`. Only a price-model anchor — real holdings live in the `holdings` table |
 
 ## Per-call inputs (set by the caller, not stored)
 
@@ -108,14 +108,19 @@ stock.
 6. **events** — scripted, escape the soft band and ratchet it outward.
 7. **hard `floor` / `ceiling`** — last line of defense, never crossed.
 
-## Cold-start behavior (and a fixed bug)
+## Cold-start behavior
 
 At kickoff, before anyone trades and before any event fires, the only live term is
 `noise`, so price is a pure random walk inside the ±30% band.
 
-This held only after fixing a provisioning bug: `total_market_shares` was defaulting
-to `0` while `market_share_baseline = 3000`, so `supply_pressure = −0.02·(0 − 3000)/10000 = +0.6%/tick`
-— a constant upward push that dominated the ±0.5% noise and rammed the +30% ceiling
-within minutes. `provision()` now seeds `total_market_shares = market_share_baseline`, making
-`supply_pressure = 0` at equilibrium. Existing databases must be re-provisioned
-(`scripts/setup_db.py --reset --force`) for the fix to take effect.
+This requires `supply_pressure = 0` at equilibrium, which now holds **by construction**:
+both `market_share_baseline` and the provisioned `total_market_shares` are **0**, so
+`supply_pressure = −0.02·(0 − 0)/1000 = 0`. Because the term depends only on the *deviation*
+`total_market_shares − market_share_baseline`, the baseline is a free offset — moving both off
+`0` together leaves every price dynamic identical.
+
+Earlier this was mis-anchored: `total_market_shares` defaulted to `0` while
+`market_share_baseline = 3000`, giving `supply_pressure = −0.02·(0 − 3000)/1000 = +6%/tick`
+— a constant upward push that buried the ±0.5% noise and rammed the +30% ceiling within
+minutes. Zeroing the baseline removes the trap entirely. After changing these provisioning
+values, existing databases must be re-provisioned (`scripts/setup_db.py --reset --force`).

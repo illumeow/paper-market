@@ -87,8 +87,8 @@ function buildChart(s) {
       datasets: [{
         label: s.name,
         data: points,
-        borderColor: "#6c8cff",
-        backgroundColor: "rgba(108,140,255,.12)",
+        borderColor: "#e89657",
+        backgroundColor: "rgba(232,150,87,.15)",
         borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 0,
@@ -120,12 +120,12 @@ function buildChart(s) {
             for (let v = 0; v <= hi; v += step) ticks.push({ value: v });
             axis.ticks = ticks;
           },
-          ticks: { color: "#8892a4", maxRotation: 0, autoSkip: false },
-          grid:  { color: "#2e3350" },
+          ticks: { color: "#8a7d74", maxRotation: 0, autoSkip: false },
+          grid:  { color: "rgba(71,61,56,.12)" },
         },
         y: {
-          ticks: { color: "#8892a4", callback: v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
-          grid:  { color: "#2e3350" },
+          ticks: { color: "#8a7d74", callback: v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }) },
+          grid:  { color: "rgba(71,61,56,.12)" },
         },
       },
     },
@@ -136,7 +136,9 @@ function buildChart(s) {
 const newsFeed = document.getElementById("news-feed");
 function renderNews(newsItems) {
   if (!newsItems || newsItems.length === 0) {
-    newsFeed.innerHTML = '<span class="muted">No news yet.</span>';
+    // Keep the NEWS tag visible even with no news — the tag lives on .news-item::before
+    // (screen). Grayed placeholder text; .news-empty lets prependNews drop it on first news.
+    newsFeed.innerHTML = '<div class="news-item news-empty"><div class="muted">No news yet</div></div>';
     return;
   }
   newsFeed.innerHTML = newsItems.slice(0, 10).map(n => `
@@ -147,6 +149,8 @@ function renderNews(newsItems) {
 }
 
 function prependNews(n) {
+  const empty = newsFeed.querySelector(".news-empty");
+  if (empty) empty.remove();  // first real headline replaces the "No news yet" placeholder
   const div = document.createElement("div");
   div.className = "news-item";
   div.innerHTML = `<div>${escapeHtml(n.text)}</div>`;
@@ -221,16 +225,16 @@ const eventStatusEl = document.getElementById("event-status");
 function updateEventStatus(started, elapsed_min, paused) {
   if (!started) {
     eventStatusEl.textContent = "⏳ Event not started";
-    eventStatusEl.style.color = "var(--yellow)";
+    eventStatusEl.style.color = "var(--coral)";
     return;
   }
   const elapsed = Math.round(elapsed_min);
   if (paused) {
     eventStatusEl.textContent = `⏸ Paused · elapsed ${elapsed} min`;
-    eventStatusEl.style.color = "var(--yellow)";
+    eventStatusEl.style.color = "var(--coral)";
   } else {
     eventStatusEl.textContent = `● Live · elapsed ${elapsed} min`;
-    eventStatusEl.style.color = "var(--green)";
+    eventStatusEl.style.color = "var(--teal)";
   }
 }
 

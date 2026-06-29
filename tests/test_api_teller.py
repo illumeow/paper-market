@@ -251,4 +251,4 @@ def test_clean_urls_serve_html_and_block_dot_html(client):
     assert client.get("/member.html").status_code == 404
     assert client.get("/dashboard").status_code == 200
     assert client.get("/teller").status_code == 200
-    assert client.get("/css/app.css").status_code == 200
+    assert client.get("/css/tokens.css").status_code == 200

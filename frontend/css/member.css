@@ -1,0 +1,13 @@
+/* member.css — member portfolio page specifics. Loaded after components.css. */
+
+.stock-list { display: flex; flex-direction: column; gap: 10px; }
+.stock-row {
+  background: var(--cream-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.stock-row .stock-name { font-weight: 700; font-size: .95rem; }
+.stock-row .stock-price { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.trade-controls { display: flex; gap: 6px; margin-top: 10px; align-items: center; }
+.trade-controls input { max-width: 80px; padding: 6px 8px; font-size: .88rem; }

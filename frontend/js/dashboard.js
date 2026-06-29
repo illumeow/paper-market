@@ -163,6 +163,9 @@ function onPrices(updates) {
   // the history points — NOT from the client clock + polled eventStart, which is
   // null/stale for up to one poll after kickoff and would pile early points at 0.
   const nowMin = updates.length ? updates[0].elapsed : null;
+  // Tick pushes carry server `elapsed` → keep the status line live every tick.
+  // Trade pushes have no elapsed (nowMin null) and must not touch it.
+  if (nowMin != null) updateEventStatus(true, nowMin, false);
   for (const u of updates) {
     // Update summary card: price, pct-change (from init_price), and volume
     const card = summaryCards[u.stock_id];
@@ -202,7 +205,8 @@ function onPrices(updates) {
 
 // ── Stream with auto-reconnect ────────────────────────────
 function connectStream() {
-  const es = stream(onPrices, n => prependNews(n));
+  const es = stream(onPrices, n => prependNews(n),
+    d => updateEventStatus(d.started, d.elapsed_min, d.paused));
   es.onerror = () => {
     es.close();
     setTimeout(connectStream, 3000);
@@ -212,14 +216,19 @@ function connectStream() {
 // ── Event status indicator ────────────────────────────────
 const eventStatusEl = document.getElementById("event-status");
 
-function updateEventStatus(started, elapsed_min) {
-  if (started) {
-    const elapsed = Math.round(elapsed_min);
-    eventStatusEl.textContent = `● Live · elapsed ${elapsed} min`;
-    eventStatusEl.style.color = "var(--green)";
-  } else {
+function updateEventStatus(started, elapsed_min, paused) {
+  if (!started) {
     eventStatusEl.textContent = "⏳ Event not started";
     eventStatusEl.style.color = "var(--yellow)";
+    return;
+  }
+  const elapsed = Math.round(elapsed_min);
+  if (paused) {
+    eventStatusEl.textContent = `⏸ Paused · elapsed ${elapsed} min`;
+    eventStatusEl.style.color = "var(--yellow)";
+  } else {
+    eventStatusEl.textContent = `● Live · elapsed ${elapsed} min`;
+    eventStatusEl.style.color = "var(--green)";
   }
 }
 
@@ -229,7 +238,7 @@ async function pollDashboard() {
     const data = await api("/api/dashboard");
     eventStart = data.event_start;
     timeScale = data.time_scale ?? 1;
-    updateEventStatus(data.started, data.elapsed_min);
+    updateEventStatus(data.started, data.elapsed_min, data.paused);
     // Optionally refresh summary and news too
     if (data.stocks && data.stocks.length > 0) renderSummary(data.stocks);
     if (data.news) renderNews(data.news);
@@ -242,7 +251,7 @@ async function load() {
     const data = await api("/api/dashboard");
     eventStart = data.event_start;
     timeScale = data.time_scale ?? 1;
-    updateEventStatus(data.started, data.elapsed_min);
+    updateEventStatus(data.started, data.elapsed_min, data.paused);
     renderSummary(data.stocks);
     renderCharts(data.stocks);
     renderNews(data.news);

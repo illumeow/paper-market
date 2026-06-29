@@ -213,6 +213,37 @@ def test_member_snapshot_requires_staff(client):
     assert client.get("/api/teller/member/0-1/snapshot").status_code == 403
 
 
+def test_stop_broadcasts_status_paused(client):
+    # Verify that POST /api/teller/stop publishes a "status" SSE event with paused=True.
+    # Strategy: directly inject a Queue into bc._subs before the POST (avoids the async
+    # subscribe call), then drain it with get_nowait() after the request returns.
+    import asyncio
+    _staff(client)
+    client.post("/api/teller/start")
+    bc = client.app.state.broadcaster
+    q = asyncio.Queue()
+    bc._subs.add(q)
+    try:
+        r = client.post("/api/teller/stop")
+        assert r.status_code == 200
+        # Response shape: must report started=True, paused=True
+        body = r.json()
+        assert body["started"] is True
+        assert body["paused"] is True
+        # SSE broadcast: drain queue, find status event with paused=True
+        events = []
+        while True:
+            try:
+                events.append(q.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+        status_events = [e for e in events if e["type"] == "status"]
+        assert len(status_events) >= 1, "expected at least one 'status' event to be broadcast"
+        assert status_events[0]["data"]["paused"] is True
+    finally:
+        bc._subs.discard(q)
+
+
 def test_clean_urls_serve_html_and_block_dot_html(client):
     # Extensionless page serves the .html content; direct .html is 404 (one canonical URL).
     ok = client.get("/member")

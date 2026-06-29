@@ -1,7 +1,6 @@
 import time
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from sse_starlette.sse import EventSourceResponse
 from app.bank import repo as bank_repo
 from app.bank import service as bank_service
 from app.stock import repo as stock_repo
@@ -85,17 +84,3 @@ async def trade(request: Request, mid: str = Depends(require_member), __: bool =
     return res
 
 
-@router.get("/api/stream")
-async def stream(request: Request):
-    bc = request.app.state.broadcaster
-    q = await bc.subscribe()
-
-    async def gen():
-        try:
-            while True:
-                event = await q.get()
-                yield {"event": event["type"], "data": __import__("json").dumps(event["data"])}
-        finally:
-            bc.unsubscribe(q)
-
-    return EventSourceResponse(gen())

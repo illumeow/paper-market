@@ -1,5 +1,7 @@
+import json
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from sse_starlette.sse import EventSourceResponse
 from app.stock import repo as stock_repo
 from app.core.auth import COOKIE
 from app.core.clock import event_start, elapsed_min, is_paused, _TIME_SCALE
@@ -37,3 +39,19 @@ async def dashboard(request: Request):
             "elapsed_min": elapsed_min(conn),
             "event_start": event_start(conn),
             "time_scale": _TIME_SCALE}
+
+
+@router.get("/api/stream")
+async def stream(request: Request):
+    bc = request.app.state.broadcaster
+    q = await bc.subscribe()
+
+    async def gen():
+        try:
+            while True:
+                event = await q.get()
+                yield {"event": event["type"], "data": json.dumps(event["data"])}
+        finally:
+            bc.unsubscribe(q)
+
+    return EventSourceResponse(gen())

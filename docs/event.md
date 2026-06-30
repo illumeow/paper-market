@@ -90,7 +90,7 @@ per_tick = (1 + pct) ** (tick_min / duration_min) − 1
 **bypasses the soft quarter band** and **ratchets** that band outward if it
 pushes past an edge (sized by `event_pct`, the dominant active event's `pct`).
 Concurrent events on the same stock sum their `per_tick`. Full price math and
-the band/ratchet rules are in [price_model.md](price_model.md).
+the band/ratchet rules are in [stock.md](stock.md).
 
 ## The event clock
 

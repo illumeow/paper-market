@@ -20,11 +20,32 @@ const loanBtn      = document.getElementById("loan-btn");
 const loanSettleBtn = document.getElementById("loan-settle-btn");
 const marketList   = document.getElementById("market-list");
 
+// ── Balance / debt display (tick-stepped, no per-refresh creep) ──
+// /api/me returns full-precision balance/debt that grows continuously, so reading
+// it on every refresh makes the stats creep (and a just-borrowed loan reads
+// 1000.01, not 1000.00). Instead we hold what's shown and only re-sync it from
+// the server on a price TICK — so the stats step with the market. Ops adjust
+// these by their known delta first (see the handlers), so an action shows its
+// exact result at once; the next tick reconciles against the server.
+let shownBalance = 0;
+let shownDebt = 0;
+
+function renderStats() {
+  statBalance.textContent = "$" + money(shownBalance);
+  statDebt.textContent = shownDebt > 0 ? "$" + money(shownDebt) : "—";
+}
+
 // ── Render portfolio ────────────────────────────────────
-function renderPortfolio(me) {
+// syncStats=true only on a tick or first load: that's when the shown balance/debt
+// step to the live server value. Everything else (holdings, FD, loan card) always
+// reflects the latest /api/me.
+function renderPortfolio(me, syncStats = false) {
   midLabel.textContent = me.member_id;
-  statBalance.textContent = "$" + money(me.balance);
-  statDebt.textContent = me.debt > 0 ? "$" + money(me.debt) : "—";
+  if (syncStats) {
+    shownBalance = me.balance;
+    shownDebt = me.debt > 0 ? me.debt : 0;
+  }
+  renderStats();
 
   // Holdings are now shown inline per stock row (see updateHeldDisplays).
   heldShares = {};
@@ -126,6 +147,8 @@ function wireFdForm() {
     if (!p || p < 1) { toast("Enter a principal", "err"); return; }
     try {
       await api("/api/fd/open", "POST", { principal: p, term: parseInt(term.value, 10) });
+      shownBalance -= p;   // principal leaves cash now; reconciles next tick
+      renderStats();
       toast("FD opened");
       await refreshMe();   // renders the card and flips fdShown
     } catch (err) { toast(err.message, "err"); }
@@ -147,6 +170,8 @@ async function closeFd() {
   if (!window.confirm(msg)) return;
   try {
     await api("/api/fd/close", "POST");
+    shownBalance += fd.close_value_now;   // payout (matured) or early-exit value the card showed
+    renderStats();
     toast("FD closed");
     await refreshMe();
   } catch (err) { toast(err.message, "err"); }
@@ -162,13 +187,19 @@ loanBtn.addEventListener("click", async () => {
   try {
     if (currentDebt > 0) {
       await api("/api/repay", "POST", { amount: amt });
+      const pay = Math.min(amt, shownDebt);   // server pays min(amt, owed); reconciles next tick
+      shownDebt = Math.max(0, shownDebt - pay);
+      shownBalance -= pay;
       toast("Repayment recorded");
     } else {
       await api("/api/loan", "POST", { amount: amt });
+      shownDebt = amt;            // exact principal — no sub-tick interest shown
+      shownBalance += amt;
       toast("Loan approved");
     }
+    renderStats();
     loanAmt.value = "";
-    await refreshMe();
+    await refreshMe();            // updates card/holdings; stats stay at the optimistic value
   } catch (err) {
     toast(err.message, "err");
   } finally {
@@ -180,6 +211,9 @@ loanSettleBtn.addEventListener("click", async () => {
   loanSettleBtn.disabled = true;
   try {
     await api("/api/settle", "POST");
+    shownBalance -= shownDebt;   // settle charges the full owed; next tick reconciles the residue
+    shownDebt = 0;
+    renderStats();
     toast("Loan settled");
     loanAmt.value = "";
     await refreshMe();
@@ -228,9 +262,13 @@ function renderMarket(market) {
     const qtyEl = document.getElementById("shares-" + sid);
     const shares = parseInt(qtyEl.value, 10);
     if (!shares || shares < 1) { toast("Enter a valid quantity", "err"); return; }
+    const px = prices[sid];   // displayed pre-trade price = the cost basis charged
     btn.disabled = true;
     try {
       const res = await api("/api/trade", "POST", { stock_id: sid, side, shares });
+      const cost = res.shares * (px ?? res.price);
+      shownBalance += side === "buy" ? -cost : cost;   // own-trade price push re-syncs stats via onPrices
+      renderStats();
       toast(`${side === "buy" ? "Bought" : "Sold"} ${res.shares} shares @ $${money(res.price)}`);
       await refreshMe();
     } catch (err) {
@@ -262,17 +300,19 @@ function onPrices(updates) {
     const el = document.getElementById("price-" + u.stock_id);
     if (el) el.textContent = "$" + money(u.price);
   }
-  refreshMe();
+  refreshMe(true);   // a tick: step the shown balance/debt to the live server value
 }
 function onNews(n) {
   toast(n.text);
 }
 
 // ── Refresh me ──────────────────────────────────────────
-async function refreshMe() {
+// syncStats=true steps the shown balance/debt to the live value (ticks + first
+// load); the default (false) refreshes the rest while holding the stats put.
+async function refreshMe(syncStats = false) {
   try {
     const me = await api("/api/me");
-    renderPortfolio(me);
+    renderPortfolio(me, syncStats);
   } catch (_) { /* silently ignore if session expired */ }
 }
 
@@ -299,7 +339,7 @@ function connectStream() {
 function showApp(me) {
   loginSection.classList.add("hidden");
   appSection.classList.remove("hidden");
-  renderPortfolio(me);
+  renderPortfolio(me, true);   // first load: seed the shown balance/debt
   // Load market
   api("/api/market").then(market => renderMarket(market)).catch(err => toast(err.message, "err"));
   // Subscribe to stream

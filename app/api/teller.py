@@ -148,7 +148,7 @@ async def t_withdraw(request: Request, _: bool = Depends(require_staff), __: boo
 async def t_loan(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.loan_disburse(conn, b["id"], int(b["amount"]), now, "teller", _eco(request)["loan_cap"])
+        bank_service.loan_disburse(conn, b["id"], b["amount"], now, "teller", _eco(request)["loan_cap"])
         return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
@@ -156,7 +156,7 @@ async def t_loan(request: Request, _: bool = Depends(require_staff), __: bool = 
 async def t_repay(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        bank_service.loan_repay(conn, b["id"], int(b["amount"]), now, "teller")
+        bank_service.loan_repay(conn, b["id"], b["amount"], now, "teller")
         return {"ok": True, "member": _member_snapshot(conn, b["id"], now, _eco(request))}
 
 
@@ -172,8 +172,8 @@ async def t_settle(request: Request, _: bool = Depends(require_staff), __: bool 
 async def t_fd_open(request: Request, _: bool = Depends(require_staff), __: bool = Depends(require_running)):
     b = await request.json(); eco = _eco(request); conn = request.app.state.conn; now = time.time()
     async with MUTATION_LOCK:
-        fd = bank_service.fd_open(conn, b["id"], int(b["principal"]), int(b["term"]),
-                                  now, "teller", demand_rate=eco["demand_rate"],
+        fd = bank_service.fd_open(conn, b["id"], b["principal"], int(b["term"]),
+                                  now, "teller",
                                   fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
                                   event_duration_min=eco["event_duration_min"])
         return {"fd_id": fd, "member": _member_snapshot(conn, b["id"], now, _eco(request))}

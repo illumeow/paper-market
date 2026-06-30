@@ -102,7 +102,7 @@ def loan_owed_now(conn, mid, now) -> float:
     return float(loan_owed(m["debt"], elapsed))
 
 
-def fd_open(conn, mid, principal, term, now, actor, *, demand_rate, fd_rate_30,
+def fd_open(conn, mid, principal, term, now, actor, *, fd_rate_30,
             fd_rate_60, event_duration_min):
     if term not in (30, 60):
         raise BusinessError("Term must be 30 or 60")

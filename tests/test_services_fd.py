@@ -12,7 +12,7 @@ def _m(bal=5000):
     conn.commit(); return conn
 
 
-RATES = dict(demand_rate=0.005, fd_rate_30=0.01, fd_rate_60=0.02, event_duration_min=120)
+RATES = dict(fd_rate_30=0.01, fd_rate_60=0.02, event_duration_min=120)
 
 
 def test_open_deducts_principal():

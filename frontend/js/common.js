@@ -37,6 +37,19 @@ export function fdTermSelect(opts, id = "fd-term") {
 export function fdTermRate(sel) {
   return parseFloat(sel.selectedOptions[0].dataset.rate);
 }
+// Restrict an <input> to non-negative integers. Blocks the decimal point, sign
+// and exponent keys (this also kills the type=number caret jump that fires when
+// "." is typed), and strips any non-digit that arrives via paste.
+export function intInput(el) {
+  if (!el) return;
+  el.addEventListener("keydown", e => {
+    if ([".", ",", "e", "E", "+", "-"].includes(e.key)) e.preventDefault();
+  });
+  el.addEventListener("input", () => {
+    const v = el.value.replace(/\D/g, "");
+    if (v !== el.value) el.value = v;
+  });
+}
 export function stream(onPrices, onNews, onStatus) {
   const es = new EventSource(BASE + "/api/stream");
   es.addEventListener("prices", e => onPrices(JSON.parse(e.data)));

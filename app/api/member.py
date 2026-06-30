@@ -51,8 +51,8 @@ async def m_fd_open(request: Request, mid: str = Depends(require_member), __: bo
     b = await request.json()
     eco = request.app.state.config.economy
     async with MUTATION_LOCK:
-        bank_service.fd_open(request.app.state.conn, mid, int(b["principal"]), int(b["term"]),
-                             time.time(), "member", demand_rate=eco["demand_rate"],
+        bank_service.fd_open(request.app.state.conn, mid, b["principal"], int(b["term"]),
+                             time.time(), "member",
                              fd_rate_30=eco["fd_rate_30"], fd_rate_60=eco["fd_rate_60"],
                              event_duration_min=eco["event_duration_min"])
     return {"ok": True}
@@ -75,7 +75,7 @@ async def m_loan(request: Request, mid: str = Depends(require_member), __: bool 
     b = await request.json()
     eco = request.app.state.config.economy
     async with MUTATION_LOCK:
-        bank_service.loan_disburse(request.app.state.conn, mid, int(b["amount"]), time.time(),
+        bank_service.loan_disburse(request.app.state.conn, mid, b["amount"], time.time(),
                                    "member", eco["loan_cap"])
     return {"ok": True}
 
@@ -84,7 +84,7 @@ async def m_loan(request: Request, mid: str = Depends(require_member), __: bool 
 async def m_repay(request: Request, mid: str = Depends(require_member), __: bool = Depends(require_running)):
     b = await request.json()
     async with MUTATION_LOCK:
-        bank_service.loan_repay(request.app.state.conn, mid, int(b["amount"]), time.time(), "member")
+        bank_service.loan_repay(request.app.state.conn, mid, b["amount"], time.time(), "member")
     return {"ok": True}
 
 

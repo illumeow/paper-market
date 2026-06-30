@@ -1,4 +1,4 @@
-import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast } from "./common.js";
+import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast, intInput } from "./common.js";
 
 // ── State ───────────────────────────────────────────────
 let prices = {}; // stock_id -> current price (live)
@@ -132,6 +132,7 @@ function fdFormHtml(me) {
 function wireFdForm() {
   const principal = document.getElementById("fd-principal");
   if (!principal) return;  // window-closed message → nothing to wire
+  intInput(principal);     // integer-only principal; API no longer clamps
   const term    = document.getElementById("fd-term");
   const preview = document.getElementById("fd-preview");
   function updatePreview() {
@@ -226,8 +227,9 @@ loanSettleBtn.addEventListener("click", async () => {
 
 loanAmt.addEventListener("keydown", e => { if (e.key === "Enter") loanBtn.click(); });
 
-// Loan amount stays digit-only (type=number would accept "1e9", "."): strip as typed.
-loanAmt.addEventListener("input", () => { loanAmt.value = loanAmt.value.replace(/\D/g, ""); });
+// Loan amount stays integer-only (block ".", "1e9", sign; also fixes the
+// type=number caret jump on "."). API no longer clamps the amount.
+intInput(loanAmt);
 
 // ── Render market list ──────────────────────────────────
 function renderMarket(market) {

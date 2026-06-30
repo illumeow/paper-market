@@ -1,4 +1,4 @@
-import { api, url, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast } from "./common.js";
+import { api, url, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast, intInput } from "./common.js";
 
 // ── DOM refs ─────────────────────────────────────────────
 const loginSection    = document.getElementById("login-section");
@@ -204,6 +204,7 @@ function renderFdOps(data) {
       <button class="btn btn--primary btn--sm btn--w95" id="fd-open-btn">Open FD</button>
     </div>`;
   const principal = document.getElementById("fd-principal");
+  intInput(principal);     // integer-only principal; API no longer clamps
   const term      = document.getElementById("fd-term");
   const preview   = document.getElementById("fd-preview");
   function updatePreview() {
@@ -333,6 +334,7 @@ enterClicks("withdraw-amt",   "withdraw-btn");
 enterClicks("loan-repay-amt", "loan-repay-btn");
 enterClicks("trade-shares",   "trade-buy-btn");   // Enter on quantity = Buy
 enterClicks("news-text",      "news-btn");
+intInput(document.getElementById("loan-repay-amt"));   // integer-only; API no longer clamps
 
 // ── Event Control ─────────────────────────────────────────
 // Three states from {started, paused}: not-started → Start; running → Pause;

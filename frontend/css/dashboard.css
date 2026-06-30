@@ -2,20 +2,20 @@
    Both pages share frontend/js/dashboard.js. */
 
 /* Screen = projection layout root: full viewport, no scroll. A vertical flex
-   column with space-between spreads the three rows (header / news / tiles)
-   across the height, so child rows lean on that instead of their own margins. */
+   column stacking the three rows (header / news / tiles); header + news keep
+   small bottom margins and the tiles-grid flexes to eat the leftover height. */
 .dash--screen {
-  height: 100vh; max-width: none; margin: 0; padding: 16px 24px 30px;
-  display: flex; flex-direction: column; overflow: hidden; justify-content: space-between;
+  height: 100vh; max-width: none; margin: 0; padding: 16px 24px 24px;
+  display: flex; flex-direction: column; overflow: hidden;
 }
 
 .dash--phone .dash-header { margin-bottom: 18px; display: flex; flex-direction: column; align-items: stretch; padding: 12px 15px; gap: 3px }
 .dash--phone .dash-header-info { display: flex; flex-direction: column; gap: 6px; }
 .dash--phone .dash-header-status { display: flex; justify-content: space-between; align-items: center; }
 
-/* Screen header: the column's space-between already spaces the rows, so drop the
-   phone bottom margin; title + status fonts bumped up for projector viewing distance. */
-.dash--screen .dash-header { margin-bottom: 0px; }
+/* Screen header: tighter bottom margin than phone's 18px; title + status fonts
+   bumped up for projector viewing distance. */
+.dash--screen .dash-header { margin-bottom: 10px; }
 .dash--screen .dash-header h1 { font-size: 1.8rem; }
 .dash--screen #event-status, .dash--screen #last-update { font-size: 1.2rem; }
 
@@ -31,7 +31,7 @@
 }
 
 /* News (screen): latest headline only, as a one-line ticker banner: a coral "NEWS" tag + a larger headline */
-.dash--screen .news-banner { margin-bottom: 0px; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
+.dash--screen .news-banner { margin-bottom: 10px; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none; }
 .dash--screen #news-feed { align-content: center; height: 100%; }
 .dash--screen .news-item:not(:first-child) { display: none; }
 .dash--screen .news-item {
@@ -72,13 +72,19 @@
 .dash--phone .tile .s-pct   { font-size: .9rem; }
 .dash--phone .tile .s-vol   { font-size: .9rem; }
 
+/* Grid eats all height the header + news leave (flex:1 in the column); two rows
+   of tiles split it evenly via the tile's 50% height below. */
 .dash--screen .tiles-grid {
-  display: flex; flex-wrap: wrap;
+  display: flex; flex-wrap: wrap; flex: 1 1 auto;
   justify-content: center; align-content: center; gap: 20px; min-height: 0;
 }
-/* Tiles fill the rest; row 1 = 3 tiles, row 2 = 2 tiles centered */
+/* Tile width = 1/3 row (3 per row, row 2 wraps 2 centered); height = half the
+   grid so two rows fill it (20px row-gap → 50% - 10px). The definite height is
+   what lets .t-chart's flex:1 actually grow — without it the chart collapses to
+   the canvas default. */
 .dash--screen .tile {
   flex: 0 0 calc((100% - 40px) / 3);
+  height: calc(50% - 10px);
   min-width: 0; min-height: 0; overflow: hidden;
 }
 .dash--screen .tile .s-name  { font-size: 1.5rem; }
@@ -86,3 +92,4 @@
 .dash--screen .tile .s-price { font-size: 2rem; }
 .dash--screen .tile .s-pct   { font-size: 1.25rem; }
 .dash--screen .tile .s-vol   { font-size: 1.2rem; }
+.dash--screen .tile .t-chart { flex: 1 1 auto; min-height: 0; }  /* grow to fill */

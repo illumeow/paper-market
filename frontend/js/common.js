@@ -50,6 +50,16 @@ export function intInput(el) {
     if (v !== el.value) el.value = v;
   });
 }
+// Enter in the given input clicks the given button. Both resolved by id; the
+// button is looked up at keypress time, so it works for buttons that are shown,
+// hidden, or rebuilt after wiring. No-op if the input is absent.
+export function enterClicks(inputId, buttonId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById(buttonId).click(); }
+  });
+}
 export function stream(onPrices, onNews, onStatus) {
   const es = new EventSource(BASE + "/api/stream");
   es.addEventListener("prices", e => onPrices(JSON.parse(e.data)));

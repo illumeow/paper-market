@@ -20,7 +20,7 @@ def execute_trade(conn, mid, sid, side, shares, now, actor, *, tuning, noise_sca
 
     if side == "buy":
         if cost > bal:
-            raise BusinessError("Insufficient cash")
+            raise BusinessError("Insufficient balance")
         update_member(conn, mid, balance=bal - cost)
         repo.set_holding(conn, mid, sid, held + shares)
         signed = shares

@@ -1,4 +1,4 @@
-import { api, url, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast, intInput } from "./common.js";
+import { api, url, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast, intInput, enterClicks } from "./common.js";
 
 // ── DOM refs ─────────────────────────────────────────────
 const loginSection    = document.getElementById("login-section");
@@ -318,21 +318,13 @@ document.getElementById("news-btn").addEventListener("click", async () => {
 });
 
 // ── Enter-to-submit ───────────────────────────────────────
-// Every input fires its action button on Enter. fd-principal is wired in
-// renderFdOps instead — its markup is rebuilt on each lookup.
-function enterClicks(inputId, buttonId) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-  input.addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); document.getElementById(buttonId).click(); }
-  });
-}
+// Every input fires its action button on Enter (enterClicks from common.js).
+// fd-principal is wired in renderFdOps instead — its markup is rebuilt per lookup.
 enterClicks("staff-pw",       "login-btn");
 enterClicks("member-id-input","lookup-btn");
 enterClicks("deposit-amt",    "deposit-btn");
 enterClicks("withdraw-amt",   "withdraw-btn");
 enterClicks("loan-repay-amt", "loan-repay-btn");
-enterClicks("trade-shares",   "trade-buy-btn");   // Enter on quantity = Buy
 enterClicks("news-text",      "news-btn");
 intInput(document.getElementById("loan-repay-amt"));   // integer-only; API no longer clamps
 

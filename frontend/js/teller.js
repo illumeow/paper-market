@@ -140,20 +140,17 @@ function showUnlocked(data) {
     mHoldingsList.innerHTML = '<span class="muted">No holdings.</span>';
   }
 
-  // Loan/Repay unified UI
+  // Loan/Repay unified UI (owed amount shown by the Debt stat above, not here)
   currentDebt = data.debt || 0;
   const lrBtn  = document.getElementById("loan-repay-btn");
-  const lrNote = document.getElementById("loan-repay-note");
   const settleBtn = document.getElementById("settle-btn");
   if (currentDebt > 0) {
     lrBtn.textContent = "Repay";
     lrBtn.className = "btn btn--neutral btn--sm btn--w95 btn--input-h";
-    lrNote.textContent = `Owes $${money(currentDebt)} (incl. accrued interest)`;
     settleBtn.style.display = "";   // pays the exact owed — clears fractional residue a typed repay can't
   } else {
     lrBtn.textContent = "Issue Loan";
     lrBtn.className = "btn btn--primary btn--sm btn--w95 btn--input-h";
-    lrNote.textContent = "";
     settleBtn.style.display = "none";
   }
 

@@ -41,6 +41,7 @@ async def me(request: Request, mid: str = Depends(require_member)):
             "debt": bank_service.loan_owed_now(conn, mid, now),
             "holdings": holdings, "fixed_deposits": fds,
             "fd_options": bank_service.fd_term_options(eco),
+            "loan_cap": eco["loan_cap"],
             "elapsed_min": elapsed_min(conn, now),
             "event_duration_min": eco["event_duration_min"]}
 
@@ -62,6 +63,36 @@ async def m_fd_close(request: Request, mid: str = Depends(require_member), __: b
     async with MUTATION_LOCK:
         bank_service.fd_close_current(request.app.state.conn, mid, time.time(), "member",
                                       demand_rate=request.app.state.config.economy["demand_rate"])
+    return {"ok": True}
+
+
+# Loan ops, mirror of the teller routes (loan/repay/settle) but self-service: the
+# member acts on their own cookie-resolved id, so there's no `id` in the body.
+# Same domain calls, same actor convention ("member"); the member page refreshes
+# from /api/me afterward, so these just return {"ok": True}.
+@router.post("/api/loan")
+async def m_loan(request: Request, mid: str = Depends(require_member), __: bool = Depends(require_running)):
+    b = await request.json()
+    eco = request.app.state.config.economy
+    async with MUTATION_LOCK:
+        bank_service.loan_disburse(request.app.state.conn, mid, int(b["amount"]), time.time(),
+                                   "member", eco["loan_cap"])
+    return {"ok": True}
+
+
+@router.post("/api/repay")
+async def m_repay(request: Request, mid: str = Depends(require_member), __: bool = Depends(require_running)):
+    b = await request.json()
+    async with MUTATION_LOCK:
+        bank_service.loan_repay(request.app.state.conn, mid, int(b["amount"]), time.time(), "member")
+    return {"ok": True}
+
+
+@router.post("/api/settle")
+async def m_settle(request: Request, mid: str = Depends(require_member), __: bool = Depends(require_running)):
+    # No amount — charges the exact full-precision owed and closes the loan.
+    async with MUTATION_LOCK:
+        bank_service.loan_settle(request.app.state.conn, mid, time.time(), "member")
     return {"ok": True}
 
 

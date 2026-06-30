@@ -1,4 +1,4 @@
-import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast, intInput } from "./common.js";
+import { api, stream, money, count, ratePct, fdPayout, fdTermSelect, fdTermRate, toast, intInput, enterClicks } from "./common.js";
 
 // ── State ───────────────────────────────────────────────
 let prices = {}; // stock_id -> current price (live)
@@ -142,6 +142,7 @@ function wireFdForm() {
       : "";
   }
   principal.addEventListener("input", updatePreview);
+  enterClicks("fd-principal", "fd-open-btn");   // dynamic field — re-wired each render
   term.addEventListener("change", updatePreview);
   document.getElementById("fd-open-btn").addEventListener("click", async () => {
     const p = parseInt(principal.value, 10);
@@ -225,7 +226,7 @@ loanSettleBtn.addEventListener("click", async () => {
   }
 });
 
-loanAmt.addEventListener("keydown", e => { if (e.key === "Enter") loanBtn.click(); });
+enterClicks("loan-amt", "loan-btn");   // Enter borrows/repays (whichever the button shows)
 
 // Loan amount stays integer-only (block ".", "1e9", sign; also fixes the
 // type=number caret jump on "."). API no longer clamps the amount.
@@ -375,13 +376,8 @@ loginBtn.addEventListener("click", async () => {
   }
 });
 
-memberIdInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") loginBtn.click();
-});
-
-pinInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") loginBtn.click();
-});
+enterClicks("member-id-input", "login-btn");
+enterClicks("pin-input", "login-btn");
 
 // ── Logout ──────────────────────────────────────────────
 document.getElementById("logout-btn").addEventListener("click", async () => {

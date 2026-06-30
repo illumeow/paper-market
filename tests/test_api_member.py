@@ -56,3 +56,39 @@ def test_trade_blocked_before_start_then_allowed(client):
     r2 = client.post("/api/trade", json={"stock_id": "TECH", "side": "buy", "shares": 1})
     assert r2.status_code == 200
     assert "price" in r2.json() and "shares" in r2.json()
+
+
+def test_me_reports_loan_cap(client):
+    _login_member(client, None)
+    assert client.get("/api/me").json()["loan_cap"] == 5000  # config/config.toml
+
+
+def test_member_self_loan_then_settle(client):
+    from app.core.clock import set_event_start
+    _login_member(client, None)
+    set_event_start(client.app.state.conn, time.time())
+    # borrow: balance up by the loan, debt equals it (+ negligible t0 interest)
+    assert client.post("/api/loan", json={"amount": 2000}).status_code == 200
+    me = client.get("/api/me").json()
+    assert 2000 <= me["debt"] < 2001 and me["balance"] >= 3000  # 1000 start + 2000
+    # partial repay reduces debt and balance
+    assert client.post("/api/repay", json={"amount": 500}).status_code == 200
+    me = client.get("/api/me").json()
+    assert 1500 <= me["debt"] < 1501  # ~2000 owed − 500 paid, interest negligible
+    # settle clears the loan in full
+    assert client.post("/api/settle").status_code == 200
+    assert client.get("/api/me").json()["debt"] == 0
+
+
+def test_member_loan_blocked_before_kickoff(client):
+    _login_member(client, None)
+    r = client.post("/api/loan", json={"amount": 1000})
+    assert r.status_code == 409 and r.json()["detail"] == "Event not started"
+
+
+def test_member_loan_over_cap_rejected(client):
+    from app.core.clock import set_event_start
+    _login_member(client, None)
+    set_event_start(client.app.state.conn, time.time())
+    r = client.post("/api/loan", json={"amount": 99999})
+    assert r.status_code == 400 and r.json()["detail"] == "Invalid loan amount"

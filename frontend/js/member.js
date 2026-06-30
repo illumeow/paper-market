@@ -15,6 +15,9 @@ const midLabel     = document.getElementById("member-id-label");
 const statBalance  = document.getElementById("stat-balance");
 const statDebt     = document.getElementById("stat-debt");
 const fdList       = document.getElementById("fd-list");
+const loanAmt      = document.getElementById("loan-amt");
+const loanBtn      = document.getElementById("loan-btn");
+const loanSettleBtn = document.getElementById("loan-settle-btn");
 const marketList   = document.getElementById("market-list");
 
 // ── Render portfolio ────────────────────────────────────
@@ -29,6 +32,29 @@ function renderPortfolio(me) {
   updateHeldDisplays();
 
   renderFd(me);
+  renderLoan(me);
+}
+
+// ── Loan card: one debt → Repay + Settle, no debt → Borrow ──
+// The markup is static (in member.html), so this only flips button label/class,
+// the Settle button, and the amount placeholder. It never writes loan-amt.value,
+// so the per-tick refresh can't wipe a half-typed amount (placeholder shows only
+// while the field is empty). The owed amount lives in the Debt stat at the top.
+let currentDebt = 0;
+
+function renderLoan(me) {
+  currentDebt = me.debt > 0 ? me.debt : 0;
+  if (currentDebt > 0) {
+    loanBtn.textContent = "Repay";
+    loanBtn.className = "btn btn--neutral btn--sm btn--w95 btn--input-h";
+    loanSettleBtn.style.display = "";   // pays the exact owed — clears a fractional residue a typed repay can't
+    loanAmt.placeholder = "Amount";
+  } else {
+    loanBtn.textContent = "Borrow";
+    loanBtn.className = "btn btn--primary btn--sm btn--w95 btn--input-h";
+    loanSettleBtn.style.display = "none";
+    loanAmt.placeholder = me.loan_cap ? `Amount (up to $${count(me.loan_cap)})` : "Amount";
+  }
 }
 
 // ── Fixed deposit: show the open FD as a card, else the open form ──
@@ -125,6 +151,49 @@ async function closeFd() {
     await refreshMe();
   } catch (err) { toast(err.message, "err"); }
 }
+
+// ── Loan actions ────────────────────────────────────────
+// One button does borrow-or-repay off currentDebt (set each render), mirroring
+// the teller. Settle has no amount — the server charges the exact owed.
+loanBtn.addEventListener("click", async () => {
+  const amt = parseInt(loanAmt.value, 10);
+  if (!amt || amt < 1) { toast("Enter an amount", "err"); return; }
+  loanBtn.disabled = true;
+  try {
+    if (currentDebt > 0) {
+      await api("/api/repay", "POST", { amount: amt });
+      toast("Repayment recorded");
+    } else {
+      await api("/api/loan", "POST", { amount: amt });
+      toast("Loan approved");
+    }
+    loanAmt.value = "";
+    await refreshMe();
+  } catch (err) {
+    toast(err.message, "err");
+  } finally {
+    loanBtn.disabled = false;
+  }
+});
+
+loanSettleBtn.addEventListener("click", async () => {
+  loanSettleBtn.disabled = true;
+  try {
+    await api("/api/settle", "POST");
+    toast("Loan settled");
+    loanAmt.value = "";
+    await refreshMe();
+  } catch (err) {
+    toast(err.message, "err");
+  } finally {
+    loanSettleBtn.disabled = false;
+  }
+});
+
+loanAmt.addEventListener("keydown", e => { if (e.key === "Enter") loanBtn.click(); });
+
+// Loan amount stays digit-only (type=number would accept "1e9", "."): strip as typed.
+loanAmt.addEventListener("input", () => { loanAmt.value = loanAmt.value.replace(/\D/g, ""); });
 
 // ── Render market list ──────────────────────────────────
 function renderMarket(market) {

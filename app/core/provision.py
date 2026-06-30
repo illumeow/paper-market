@@ -30,9 +30,13 @@ def provision(conn, config, pins_path="config/pins.csv", now=None):
                  float(s["init_price"]), 0))
     if conn.execute("SELECT COUNT(*) c FROM events").fetchone()["c"] == 0:
         for e in config.events:
+            # stock_id/pct/duration_min are optional: an event with only at_min +
+            # headline is a banner-only event (no stock impact). Missing fields go in
+            # NULL — due_events still fires the headline; event_drift_for skips them.
             conn.execute("INSERT INTO events(at_min,stock_id,pct,duration_min,headline) "
                          "VALUES(?,?,?,?,?)",
-                         (e["at_min"], e["stock_id"], e["pct"], e["duration_min"], e.get("headline")))
+                         (e["at_min"], e.get("stock_id"), e.get("pct"),
+                          e.get("duration_min"), e.get("headline")))
     conn.commit()
 
 

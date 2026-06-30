@@ -6,11 +6,14 @@ from app.stock.engine import next_price
 def event_drift_for(stock_id, active_events, tick_min):
     drift, dom_pct = 0.0, 0.0
     for e in active_events:
-        if e["stock_id"] in (stock_id, "all"):
-            per_tick = (1 + e["pct"]) ** (tick_min / e["duration_min"]) - 1
-            drift += per_tick
-            if abs(e["pct"]) > abs(dom_pct):
-                dom_pct = e["pct"]
+        # Banner-only events have no stock_id — they match nothing here, so the
+        # membership test alone skips them (no drift, no (1 + pct) on a null pct).
+        if e["stock_id"] not in (stock_id, "all"):
+            continue
+        per_tick = (1 + e["pct"]) ** (tick_min / e["duration_min"]) - 1
+        drift += per_tick
+        if abs(e["pct"]) > abs(dom_pct):
+            dom_pct = e["pct"]
     return drift, dom_pct
 
 

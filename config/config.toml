@@ -82,3 +82,17 @@ stock_id = "TECH"
 pct = -0.15
 duration_min = 5
 headline = "TechCo data breach — shares slide"
+
+# Banner-only event: omit stock_id/pct/duration_min for a headline with no market
+# impact (fires the news banner, leaves prices untouched).
+[[events]]
+at_min = 20
+headline = "Camp announcement — bonus round at the casino"
+
+# No-banner event: stock_id/pct/duration_min but no headline → price drifts
+# silently, no news banner.
+[[events]]
+at_min = 25
+stock_id = "BANK"
+pct = 0.12
+duration_min = 5

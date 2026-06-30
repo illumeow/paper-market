@@ -15,6 +15,46 @@ def test_ramp_drift_compounds_to_pct():
     assert pct == 0.10
 
 
+def test_headline_only_event_has_no_drift():
+    # Banner-only event: no stock_id/pct/duration → must not contribute drift and
+    # must not crash the (1 + pct) math.
+    drift, pct = events.event_drift_for("ENGY",
+        [{"stock_id": None, "pct": None, "duration_min": None}], tick_min=5/60)
+    assert drift == 0.0 and pct == 0.0
+
+
+def test_headline_only_event_fires_banner_without_touching_price():
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config()
+    cfg.events = [{"at_min": 5, "headline": "Market rumor spreads — no confirmed impact"}]
+    provision.seed(conn, cfg, pins_path="config/pins.csv", now=0.0)
+    before = stock_repo.get_stock(conn, "ENGY")["price"]
+    # noise_scale=0 and no trades/momentum → organic move is zero, so any price change
+    # would have to come from event drift. A banner-only event must produce none.
+    events.tick_prices(conn, now=10*60, tuning=cfg.tuning, noise_scale=0.0,
+                       quarter_min=cfg.quarter_min, tick_min=5/60, rng=__import__("random"),
+                       band_defaults={s["id"]: (s["band_floor_pct"], s["band_ceiling_pct"]) for s in cfg.stocks})
+    assert conn.execute("SELECT text FROM news WHERE source='event'").fetchone()["text"] \
+        == "Market rumor spreads — no confirmed impact"
+    assert stock_repo.get_stock(conn, "ENGY")["price"] == before
+
+
+def test_no_headline_event_drifts_price_without_banner():
+    # The mirror of banner-only: stock_id/pct/duration but no headline → price moves,
+    # no news published (due_events only publishes when headline is truthy).
+    conn = db.connect(":memory:"); db.init_schema(conn)
+    cfg = load_config()
+    cfg.events = [{"at_min": 5, "stock_id": "ENGY", "pct": 0.10, "duration_min": 5}]
+    provision.seed(conn, cfg, pins_path="config/pins.csv", now=0.0)
+    before = stock_repo.get_stock(conn, "ENGY")["price"]
+    # tick at elapsed=7 → inside the event's [5,10) active window
+    events.tick_prices(conn, now=7*60, tuning=cfg.tuning, noise_scale=0.0,
+                       quarter_min=cfg.quarter_min, tick_min=5/60, rng=__import__("random"),
+                       band_defaults={s["id"]: (s["band_floor_pct"], s["band_ceiling_pct"]) for s in cfg.stocks})
+    assert conn.execute("SELECT COUNT(*) c FROM news WHERE source='event'").fetchone()["c"] == 0
+    assert stock_repo.get_stock(conn, "ENGY")["price"] > before
+
+
 def test_due_event_fires_and_publishes_news():
     conn = db.connect(":memory:"); db.init_schema(conn)
     cfg = load_config(); provision.seed(conn, cfg, pins_path="config/pins.csv", now=0.0)

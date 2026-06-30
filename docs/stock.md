@@ -1,10 +1,11 @@
-# Price Model
+# Stocks
 
 How a stock's price evolves each tick. Code lives in `app/stock/engine.py`
 (`next_price`, pure function) and `app/stock/events.py` (`tick_prices` / `event_drift_for`,
 the per-tick driver). Knobs live in `config/config.toml` (`[tuning]` global,
-`[[stocks]]` per stock). All money is integer units; prices are floats internally,
-rounded on display.
+`[[stocks]]` per stock). Prices are carried **full-precision** as floats and never
+rounded internally; frontends format to 2dp for display, and rounding half-up to
+whole units happens only at the export/scoreboard boundary (`core.money._int`).
 
 ## The per-tick equation
 
@@ -59,7 +60,7 @@ The knobs pair up by what they control:
 | param | role |
 |---|---|
 | `init_price` | starting price **and** the initial `quarter_open` (first band anchor) |
-| `floor` / `ceiling` | **hard** absolute price clamps (provisioned at 0.3× / 3× `init_price`); never breached, even by events |
+| `floor` / `ceiling` | **hard** absolute price clamps (set per stock in config; the committed config uses 0.3× / 3× `init_price`); never breached, even by events |
 | `pressure_normalizer` | normalizer for `supply_pressure` — the "total float" scale (1000) |
 | `market_share_baseline` | mean-reversion target / equilibrium-holdings anchor (**0**); a tunable offset for `supply_pressure`. Cold-start `total_market_shares` is provisioned to **0** to match, so `supply_pressure = 0` at kickoff |
 

@@ -1,11 +1,8 @@
 services:
   app:
     build: .
-    environment:
-      - DB_PATH=/data/paper.db
-      - STAFF_PASSWORD=${STAFF_PASSWORD}
-      - SECRET_KEY=${SECRET_KEY}
-      - BASE_PATH=${BASE_PATH}
+    env_file:
+      - .env
     volumes:
       - ./data:/data
       - ./config:/srv/config:ro
